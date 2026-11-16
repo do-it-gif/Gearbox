@@ -1,5 +1,3 @@
-# Gearbox
-Parametric gearbox generator for various applications, complete with engineering calculations and design tools!
 # Gear reducers: planetary, cycloidal, and a cycloidal design tool
 
 Reducers I designed, printed and ran, each with its CAD and the calculation behind it, plus a browser tool I wrote for designing cycloidal drives.
