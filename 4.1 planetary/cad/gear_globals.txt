@@ -1,0 +1,13 @@
+"mn"= 1.5
+"beta"= 20
+"an"= 20
+"F"= 15
+"Zs"= 18
+"Zr"= 54
+"mt"= "mn" / cos ( "beta" )
+"at"= atn ( tan ( "an" ) / cos ( "beta" ) )
+"ds"= "mt" * "Zs"
+"dr"= "mt" * "Zr"
+"a"= ( "ds" + "ds" ) / 2
+"twS"= 360 * "F" * tan ( "beta" ) / ( pi * "ds" )
+"twR"= 360 * "F" * tan ( "beta" ) / ( pi * "dr" )
