@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cycloidal Drive Designer</title>
+<style>
+/* Layout: parameter rail (left) · results column: cross-section + status, load/stress plots, optimizer, report */
+:root{--bg:#0d1012;--panel:#15191c;--well:#0a0c0e;--line:#2a3035;--fg:#e3e1db;--muted:#8f969a;--accent:#2fb6a0;--accent2:#d6a24a;
+--good:#45c27a;--warn:#e3b04a;--bad:#ff6d64;--d1:#f08c3a;--d2:#a487f5;--pin:#58b4ff;--out:#62d474;
+--mono:ui-monospace,Consolas,"SF Mono",Menlo,monospace;--sans:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.4 var(--sans)}
+.app{display:grid;grid-template-columns:330px minmax(0,1fr);min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:14px 16px;overflow:auto;max-height:100vh;position:sticky;top:0}
+main{padding:14px 16px;display:grid;gap:14px;min-width:0;align-content:start}
+h1{font-size:15px;margin:0;color:var(--accent);letter-spacing:.02em}
+.sub{font-size:11.5px;color:var(--muted);margin:4px 0 6px}
+details{border-top:1px solid var(--line);padding:6px 0}
+summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2);padding:4px 0}
+.row{display:grid;grid-template-columns:1fr 92px;gap:8px;align-items:center;margin:5px 0}
+.row label{font-size:12px}
+.row.chk .lq label{font-size:12px}
+.row input,.row select{width:100%;background:var(--well);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:5px 6px;font:12px var(--mono)}
+.row.wide{grid-template-columns:1fr}
+.row.chk{grid-template-columns:auto 1fr}
+.row.chk input{width:auto}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+button{background:#1f2428;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:5px;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#04120f;border-color:var(--accent);font-weight:600}
+.card{background:var(--well);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
+.card h3{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+.top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,1fr);gap:14px}
+#main{width:100%;display:block;border-radius:6px;background:#050607}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:6px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.kv{display:grid;grid-template-columns:minmax(170px,1fr) auto;gap:2px 10px;font:12px var(--mono);font-variant-numeric:tabular-nums}
+.kv .k{color:var(--muted);font-family:var(--sans)}
+.kv .sep{grid-column:1/3;border-top:1px solid var(--line);margin:4px 0}
+.good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.msgs{font-size:12px;margin-top:8px;display:grid;gap:4px}
+.msg{padding:5px 8px;border-radius:5px;border-left:3px solid}
+.msg.e{border-color:var(--bad);background:rgba(255,109,100,.08)}
+.msg.w{border-color:var(--warn);background:rgba(227,176,74,.07)}
+.msg.i{border-color:var(--accent);background:rgba(47,182,160,.07)}
+.plots{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.plots canvas{width:100%;height:200px;display:block}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font:11.5px var(--mono);font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-family:var(--sans)}
+table.lib input,table.lib select{background:var(--well);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:3px 4px;font:11px var(--mono)}
+table.lib td{padding:2px 3px}
+table.eq td{text-align:left;white-space:normal;vertical-align:top}table.eq td:first-child{width:62%}
+.card h4{font-size:11.5px;color:var(--accent2);margin:12px 0 4px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px}.chips label{display:flex;gap:4px;align-items:center}
+label.tip{text-decoration:underline dotted var(--muted);text-underline-offset:3px;cursor:help}
+pre.report{font:11px/1.5 var(--mono);white-space:pre-wrap;max-height:420px;overflow:auto;margin:0}
+.hint{font-size:11px;color:var(--muted)}
+.lq{display:flex;align-items:center;gap:5px;min-width:0}
+button.q{flex:none;width:17px;height:17px;padding:0;border-radius:50%;font:600 10.5px/15px var(--sans);color:var(--accent);background:transparent;border:1px solid var(--line)}
+button.q[aria-expanded=true]{background:var(--accent);color:#04120f;border-color:var(--accent)}
+.qa{font-size:11.5px;line-height:1.45;color:var(--fg);background:rgba(47,182,160,.07);border-left:2px solid var(--accent);border-radius:4px;padding:5px 8px;margin:2px 0 6px}
+.sdesc{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
+.basic [data-adv]{display:none!important}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#secView{width:100%;display:block;border-radius:6px;background:#050607}
+.cadgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px}
+table.parts td,table.parts th{text-align:left;white-space:normal;vertical-align:top}
+table.parts td.n{white-space:nowrap;text-align:right}
+.big{font-size:13px;padding:8px 14px}
+@media(max-width:1100px){.cadgrid{grid-template-columns:1fr}}
+@media(max-width:1100px){.app{grid-template-columns:1fr}aside{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}.top{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Cycloidal Drive Designer</h1>
+  <div class="sub">Units: mm, N, N·m, MPa, rpm. Everything recomputes live, including the full 360° sweep.</div>
+  <div id="form"></div>
+  <div class="btns"><button id="play">Animate</button></div>
+  <details><summary>2D exports (disc only)</summary>
+    <div class="btns"><button id="xDXF">DXF</button><button id="xSVG">SVG</button><button id="xSTEP1">STEP disc 1</button><button id="xSTEP2">STEP disc 2</button><button id="xCSV">CSV</button><button id="xPNG">PNG</button><button id="xTXT">Report .txt</button></div>
+    <div class="hint">Discs are exported in their own frame (centre at origin, holes included). DXF/SVG: disc 1, disc 2 at +X, ring + output pin pattern at −X.</div>
+  </details>
+</aside>
+<main>
+  <div class="top">
+    <section class="card"><h3>Cross-section at crank angle</h3>
+      <canvas id="main"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--pin)"></i>ring pins</span><span><i class="dot" style="background:var(--d1)"></i>disc 1</span><span><i class="dot" style="background:var(--d2)"></i>disc 2</span>
+        <span><i class="dot" style="background:var(--out)"></i>output pins / cranks</span><span><i class="dot" style="background:var(--bad)"></i>lines of action (disc 1, width ∝ load)</span><span><i class="dot" style="background:#fff"></i>pitch point</span>
+      </div>
+    </section>
+    <section class="card"><h3>Status</h3><div id="status" class="kv"></div><div id="msgs" class="msgs"></div></section>
+  </div>
+  <section class="card" id="cadCard"><div class="topbar"><h3 style="margin:0">Drive CAD — STEP for every part</h3><div class="btns" style="margin:0"><button id="zipAll" class="primary big">Download all parts (ZIP)</button><button id="asmStep">Assembly STEP</button></div></div>
+    <div class="hint" style="margin:4px 0 10px">Built from the design on the left. Each part is a separate STEP in its own frame, ready to slice or machine. Seats for the bearings, pin pockets and bolt holes are cut in. The assembly STEP holds every part in place (plus bearings and pins) so you can check it in SolidWorks. Single-stage layout only.</div>
+    <div id="cadMsgs" class="msgs" style="margin:0 0 10px"></div>
+    <div class="cadgrid"><div><canvas id="secView"></canvas><div class="hint" id="secInfo" style="margin-top:6px"></div></div>
+      <div><div class="tblwrap"><table class="parts" id="partsTbl"></table></div><h3 style="margin:14px 0 6px">Buy / cut</h3><div class="tblwrap"><table class="parts" id="buyTbl"></table></div></div></div>
+  </section>
+  <section class="card"><h3>What to change</h3><div id="advice"></div></section>
+  <section class="card"><h3>Loads, stresses and geometry curves</h3><div class="plots" id="plots"></div>
+    <div class="hint" style="margin-top:8px">Load model: rigid disc, all pins ideally in contact, load ∝ moment arm [R3]; disc torque = T<sub>out</sub> × load share. Contact stress: Hertz line contact [R4]. Stress–strain: Ramberg–Osgood [R7] from typical datasheet values; verify for your exact grade/print settings.</div></section>
+  <section class="card"><h3>Optimizer</h3>
+    <div class="hint">Searches every free variable for the best design by your chosen goal: Zp (from the target ratio or the motor match), ring pin Ø, K1 0.45–0.85, output hole layout, every ticked bearing, and, if you allow it in the sidebar, disc material, disc thickness and housing OD. Designs meeting the target safety factor are ranked first; if none do, it tells you how close it got and what is limiting. Click Apply to load a row.</div>
+    <div class="btns"><button id="runOpt" class="primary">Run optimizer</button><span id="optInfo" class="hint" style="align-self:center"></span></div>
+    <div class="tblwrap" id="optTbl"></div>
+  </section>
+  <section class="card"><h3>Equations (with the current design's numbers)</h3><div id="eqs"></div></section>
+  <section class="card"><h3>Report</h3><div class="btns"><button id="copy">Copy report</button></div><pre class="report" id="report"></pre></section>
+</main>
+</div>
+<script>
+//CORE-START
+"use strict";
+/* References
+ [R1] Litvin & Fuentes, Gear Geometry and Applied Theory, 2nd ed., CUP 2004 — envelope / conjugate profile.
+ [R2] Shin & Kwon, "On the lobe profile design in a cycloid reducer using instant velocity center", Mech. Mach. Theory 41 (2006) 596–616 — profile eq., pitch point.
+ [R3] Blagojević, Marjanović, Djordjević, Stojanović, Disić, "A New Design of a Two-Stage Cycloidal Speed Reducer", J. Mech. Des. 133 (2011) 085001 — ring/output pin load distribution.
+ [R4] Johnson, Contact Mechanics, CUP 1985, ch.4 — Hertz line contact; yield onset p0 = 1.67·σy (Tresca).
+ [R5] Uicker, Pennock, Shigley, Theory of Machines and Mechanisms — Willis eq., planetary assembly/adjacency.
+ [R6] ISO 281:2007 — basic rating life L10 = (C/P)^p, p=3 ball, 10/3 roller.
+ [R7] Ramberg & Osgood, NACA TN-902 (1943) — ε = σ/E + 0.002(σ/σy)^n.
+ [R8] Nabtesco RV reducer kinematics: i = 1 + (Z2/Z1)·Zp (case fixed, carrier output).
+ [R9] Geckodrive, "Step Motor Basics" — corner speed ≈ V/(2·L·I) full steps/s; above it torque falls roughly as 1/speed.
+*/
+const TAU = 2 * Math.PI, R2D = 180 / Math.PI;
+const MAT = {
+  pla:   { n: "PLA (FDM printed)",      E: 3500,   nu: .36, sy: 40,   su: 50,   ro: 6,  sH: 30, rho: 1.24 },
+  petg:  { n: "PETG (FDM printed)",     E: 2000,   nu: .38, sy: 35,   su: 45,   ro: 6,  sH: 25, rho: 1.27 },
+  pa12:  { n: "PA12 (SLS/MJF)",         E: 1700,   nu: .39, sy: 45,   su: 48,   ro: 5,  sH: 30, rho: 1.01 },
+  pom:   { n: "POM-C (machined)",       E: 2800,   nu: .35, sy: 65,   su: 66,   ro: 6,  sH: 45, rho: 1.41 },
+  al7075:{ n: "Al 7075-T6",             E: 71700,  nu: .33, sy: 503,  su: 572,  ro: 18, sH: 350, rho: 2.81 },
+  c42:   { n: "42CrMo4 Q+T",            E: 210000, nu: .30, sy: 900,  su: 1100, ro: 12, sH: 900, rho: 7.85 },
+  s52100:{ n: "52100 / GCr15 hardened", E: 210000, nu: .30, sy: 1700, su: 2000, ro: 15, sH: 1800, rho: 7.81 }
+};
+const rot = (x, y, a) => { const c = Math.cos(a), s = Math.sin(a); return [x * c - y * s, x * s + y * c]; };
+
+/* ---------- kinematics ---------- */
+function ratios(p) {
+  const Zd = p.Zp - 1;
+  if (p.mode === "planet") { const pre = 1 + p.Nr / p.Ns; return { pre, cyc: Zd, total: pre * Zd, dir: -1, eta: p.effPre * p.effCyc }; }
+  if (p.mode === "rv") { const total = 1 + (p.Z2 / p.Z1) * p.Zp; return { pre: p.Z2 / p.Z1, cyc: Zd, total, dir: 1, eta: p.effPre * p.effCyc }; } // [R8]
+  return { pre: 1, cyc: Zd, total: Zd, dir: -1, eta: p.effCyc };
+}
+function totalRatioFor(p, Zp) { return ratios({ ...p, Zp }).total; }
+
+/* ---------- motor model ---------- */
+function motorPts(p) {
+  const pts = [];
+  if (p.mType === "stepper") { // [R9] corner-speed estimate: f_c = V/(2·L·I) full steps/s, then ~constant power (T ∝ 1/n)
+    const T0 = p.sPull * p.sHold, nc = motorCorner(p), nEnd = Math.min(5 * nc, 6000);
+    for (let k = 0; k <= 60; k++) { const n = nEnd * k / 60; pts.push([n, n <= nc ? T0 : T0 * nc / n]); }
+    pts.push([nEnd * 1.03, 0]); return pts;
+  }
+  if (p.mType === "kv") { // Kt = 60/(2π·Kv); T = min(Kt·I_max, Kt·(V − n/Kv)/R)
+    const Kt = 60 / (TAU * p.Kv), n0 = p.Kv * p.kV, cap = Kt * p.kI, Ts = p.kR > 0 ? Kt * p.kV / p.kR : 20 * cap;
+    for (let k = 0; k <= 60; k++) { const n = n0 * k / 60; pts.push([n, Math.max(0, Math.min(cap, Ts * (1 - n / n0)))]); } return pts;
+  }
+  if (p.mType === "linear") { const cap = p.Tcap > 0 ? Math.min(p.Tcap, p.Tstall) : p.Tstall;
+    for (let k = 0; k <= 60; k++) { const n = p.n0 * k / 60; pts.push([n, Math.min(cap, p.Tstall * (1 - n / p.n0))]); } return pts; }
+  return String(p.curve).split(/[,;\n]+/).map(t => t.split(":").map(Number)).filter(a => a.length === 2 && a.every(Number.isFinite) && a[0] >= 0 && a[1] >= 0).sort((a, b) => a[0] - b[0]);
+}
+const motorCorner = p => p.sV / (2 * p.sL * 1e-3 * p.sI) * p.sStep / 360 * 60; // rpm
+function motorT(pts, n) {
+  if (!pts.length) return 0; if (n <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (n <= pts[i][0]) { const [a, ta] = pts[i - 1], [b, tb] = pts[i]; return ta + (tb - ta) * (n - a) / (b - a || 1); }
+  return 0;
+}
+const motorNmax = pts => pts.length ? pts[pts.length - 1][0] : 0;
+/* operating point: design torque used for every stress/life check */
+function opPoint(p) {
+  const r = ratios(p), nOut = p.nIn / r.total;
+  if (!p.useMotor) return { r, nIn: p.nIn, nOut, Tm: p.Tout / (r.total * r.eta), Tav: p.Tout, Tdes: p.Tout, Tpk: p.Tout, margin: Infinity, Pout: p.Tout * nOut * TAU / 60 };
+  const pts = motorPts(p), Tm = motorT(pts, p.nIn), Tav = Tm * r.total * r.eta, Tpk = Math.max(0, ...pts.map(q => q[1])) * r.total * r.eta;
+  const Tdes = p.basis === "peak" ? Tpk : p.basis === "load" ? p.Tout : Tav;
+  return { r, nIn: p.nIn, nOut, Tm, Tav, Tdes, Tpk, margin: p.Tout > 0 ? Tav / p.Tout : Infinity, Pout: Tav * nOut * TAU / 60, pts };
+}
+function prepare(p) { const q = { ...p }; q.op = opPoint(q); q.Tdes = q.op.Tdes; return q; }
+/* motor ↔ ratio matching: for each achievable Zp, best operating point holding the load torque */
+function motorMatch(p) {
+  const pts = motorPts(p), nmax = motorNmax(pts), TL = Math.max(1e-9, p.Tout), rows = [];
+  if (!pts.length) return { rows, best: null };
+  for (let Zp = 6; Zp <= 150; Zp++) {
+    const r = ratios({ ...p, Zp }), i = r.total, need = TL / (i * r.eta);
+    let nHold = -1; for (let k = 0; k <= 300; k++) { const n = nmax * k / 300; if (motorT(pts, n) >= need) nHold = n; }
+    const nOutMax = nHold < 0 ? 0 : nHold / i;
+    let margin = NaN, nMot = NaN;
+    if (p.nOutReq > 0) { nMot = p.nOutReq * i; margin = nMot <= nmax ? motorT(pts, nMot) * i * r.eta / TL : 0; }
+    rows.push({ Zp, i, nOutMax, margin, nMot });
+  }
+  let feas, best, cands;
+  if (p.nOutReq > 0) { // smallest ratio that holds the load with the requested torque reserve at the requested output speed
+    feas = rows.filter(o => o.margin >= p.reserve);
+    best = feas.length ? feas[0] : rows.reduce((a, b) => b.margin > a.margin ? b : a, rows[0]);
+    cands = (feas.length ? feas : [best]).slice(0, 4);
+  } else { // ratio giving the highest output speed while holding the load (motor at its max-power point)
+    feas = rows.filter(o => o.nOutMax > 0);
+    best = rows.reduce((a, b) => b.nOutMax > a.nOutMax ? b : a, rows[0]);
+    cands = rows.slice().sort((a, b) => Math.abs(a.Zp - best.Zp) - Math.abs(b.Zp - best.Zp)).slice(0, 4);
+  }
+  return { rows, best, feas, cands, nmax };
+}
+
+/* ---------- profile [R2]: local disc frame, origin = disc centre ---------- */
+function profile(Zp, Rp, e, rg, N) {
+  const X = new Float64Array(N), Y = new Float64Array(N), k = Rp / (e * Zp);
+  for (let i = 0; i < N; i++) {
+    const t = i / N * TAU, a = (1 - Zp) * t, psi = Math.atan2(Math.sin(a), k - Math.cos(a));
+    X[i] = Rp * Math.cos(t) - e * Math.cos(Zp * t) - rg * Math.cos(t + psi);
+    Y[i] = Rp * Math.sin(t) - e * Math.sin(Zp * t) - rg * Math.sin(t + psi);
+  }
+  return { X, Y, N };
+}
+function curvature(P) { // signed curvature, + = convex for CCW curve
+  const { X, Y, N } = P, K = new Float64Array(N);
+  let A = 0;
+  for (let i = 0; i < N; i++) { const j = (i + 1) % N; A += X[i] * Y[j] - X[j] * Y[i]; }
+  const sg = A >= 0 ? 1 : -1;
+  for (let i = 0; i < N; i++) {
+    const m = (i - 1 + N) % N, q = (i + 1) % N;
+    const dx = (X[q] - X[m]) / 2, dy = (Y[q] - Y[m]) / 2, ddx = X[q] - 2 * X[i] + X[m], ddy = Y[q] - 2 * Y[i] + Y[m];
+    K[i] = sg * (dx * ddy - dy * ddx) / Math.pow(dx * dx + dy * dy, 1.5);
+  }
+  return { K, area: Math.abs(A) / 2 };
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L));
+  return Math.hypot(px - ax - t * vx, py - ay - t * vy);
+}
+function nearest(P, qx, qy, w) { // windowed search around polar angle (profile param t ≈ polar angle)
+  const { X, Y, N } = P;
+  let i0 = Math.round(Math.atan2(qy, qx) / TAU * N); i0 = ((i0 % N) + N) % N;
+  let best = Infinity, bi = i0;
+  for (let j = -w; j <= w; j++) { const i = (i0 + j + N) % N, d = (X[i] - qx) ** 2 + (Y[i] - qy) ** 2; if (d < best) { best = d; bi = i; } }
+  const a = (bi - 1 + N) % N, b = (bi + 1) % N;
+  return { d: Math.min(segDist(qx, qy, X[a], Y[a], X[bi], Y[bi]), segDist(qx, qy, X[bi], Y[bi], X[b], Y[b])), i: bi };
+}
+const eta = m => (1 - m.nu * m.nu) / m.E;
+const hertz = (F, sumK, b, m1, m2) => sumK <= 0 ? Infinity : Math.sqrt(F * sumK / (Math.PI * b * (eta(m1) + eta(m2)))); // [R4] line contact, MPa
+
+/* ---------- model ---------- */
+function build(p, opt = {}) {
+  const N = opt.N || 2880, Zd = p.Zp - 1, e = p.ecc, rg = p.rrp + p.dr;
+  const errs = [], warns = [], rv = p.mode === "rv";
+  const K1 = e * p.Zp / p.Rp, pitch = TAU * p.Rp / p.Zp;
+  if (!(p.Zp >= 6 && Number.isInteger(p.Zp))) errs.push("Ring pin count Zp must be an integer ≥ 6.");
+  if (!(e > 0)) errs.push("Eccentricity must be > 0.");
+  if (K1 >= 1) errs.push(`K1 = e·Zp/Rp = ${K1.toFixed(3)} ≥ 1: the cycloid becomes a looped (prolate) curve. Reduce e or Zp, or increase Rp.`);
+  if (2 * p.rrp >= pitch) errs.push(`Ring pins overlap: pin Ø${(2 * p.rrp).toFixed(2)} ≥ pin pitch ${pitch.toFixed(2)} mm.`);
+  const wall = p.housingOD / 2 - (p.Rp + p.rrp);
+  if (wall <= 0) errs.push(`Housing OD too small: ring pins reach R=${(p.Rp + p.rrp).toFixed(2)} mm.`);
+  else if (wall < p.wallMin) warns.push(`Housing wall behind pins ${wall.toFixed(2)} mm < minimum ${p.wallMin} mm.`);
+  if (rv && p.Ncrank < 2) errs.push("RV layout needs at least 2 crankshafts.");
+  if (p.mode === "planet") {
+    const Np = (p.Nr - p.Ns) / 2;
+    if (!Number.isInteger(Np) || Np < 6) errs.push(`Planet teeth (Nr−Ns)/2 = ${Np} must be an integer ≥ 6.`);
+    else {
+      if (!Number.isInteger((p.Ns + p.Nr) / p.Nplan)) errs.push(`Planetary will not assemble with equal spacing: (Ns+Nr)/n = ${((p.Ns + p.Nr) / p.Nplan).toFixed(2)} is not an integer [R5].`);
+      if (Np + 2 >= (p.Ns + Np) * Math.sin(Math.PI / p.Nplan)) errs.push("Planets collide (adjacency condition Np+2 < (Ns+Np)·sin(π/n) fails) [R5].");
+    }
+  }
+  if (errs.length) return { p, errs, warns };
+
+  const prof = profile(p.Zp, p.Rp, e, rg, N), th = profile(p.Zp, p.Rp, e, 0, opt.Nth || 1440);
+  const kap = curvature(prof).K, kth = curvature(th).K;
+  let rhoConv = Infinity;
+  for (let i = 0; i < th.N; i++) if (kth[i] > 0) rhoConv = Math.min(rhoConv, 1 / kth[i]);
+  if (rhoConv <= rg) errs.push(`Undercut: generating pin radius ${rg.toFixed(3)} mm ≥ min convex curvature radius of the theoretical cycloid ${rhoConv.toFixed(3)} mm. Reduce pin radius or K1.`);
+  const rootR = p.Rp - rg - e, tipR = p.Rp - rg + e;
+
+  if (opt.ringOnly) return { p, errs, warns, N, Zd, e, rg, K1, pitch, wall, prof, th, kap, kth, rhoConv, rootR, tipR, holes: [], rv, rat: ratios(p), w: Math.ceil(N / p.Zp) + 4 };
+  // disc holes in the disc body frame (aligned with output)
+  const holes = [];
+  const holeR = rv ? p.brgOD / 2 : p.rop + e + p.tol;
+  if (rv) {
+    holes.push({ x: 0, y: 0, r: p.shaftD / 2 + e + 0.5, kind: "shaft clearance" });
+    for (let k = 0; k < p.Ncrank; k++) holes.push({ x: p.Ro * Math.cos(k / p.Ncrank * TAU), y: p.Ro * Math.sin(k / p.Ncrank * TAU), r: holeR, kind: "crank bearing bore" });
+  } else {
+    holes.push({ x: 0, y: 0, r: p.brgOD / 2, kind: "eccentric bearing bore" });
+    for (let k = 0; k < p.Zo; k++) holes.push({ x: p.Ro * Math.cos(k / p.Zo * TAU), y: p.Ro * Math.sin(k / p.Zo * TAU), r: holeR, kind: "output pin hole" });
+  }
+  let minLig = Infinity, ligWhere = "";
+  for (const h of holes) { const L = rootR - (Math.hypot(h.x, h.y) + h.r); if (L < minLig) { minLig = L; ligWhere = h.kind + " ↔ disc root"; } }
+  for (let a = 0; a < holes.length; a++) for (let b = a + 1; b < holes.length; b++) {
+    const L = Math.hypot(holes[a].x - holes[b].x, holes[a].y - holes[b].y) - holes[a].r - holes[b].r;
+    if (L < minLig) { minLig = L; ligWhere = holes[a].kind + " ↔ " + holes[b].kind; }
+  }
+  if (minLig <= 0) errs.push(`Disc holes overlap or break through (${ligWhere}, ligament ${minLig.toFixed(2)} mm). Change Ro, hole/bearing size or e.`);
+  else if (minLig < p.lig) warns.push(`Thin ligament ${minLig.toFixed(2)} mm at ${ligWhere} (< ${p.lig} mm).`);
+
+  if (K1 < 0.45 || K1 > 0.85) warns.push(`K1 = ${K1.toFixed(3)} outside the usual 0.45–0.85 band (low K1: weak lobes / high pressure angle; high K1: sharp lobes, undercut risk).`);
+  if (p.dr <= 0) warns.push("Profile clearance Δr = 0: any manufacturing error becomes interference. Use ≥ 0.01 mm (machined) or 0.05–0.15 mm (FDM).");
+  const nHoleSym = rv ? p.Ncrank : p.Zo;
+  let discNote = "single disc";
+  if (p.dual) {
+    if (Zd % 2 === 1 && nHoleSym % 2 === 0) discNote = "Disc 2 = disc 1 flipped/rotated 180° (Zd odd, even hole count) — one part number.";
+    else { discNote = `Disc 2 is a DIFFERENT part: profile indexed −180/Zd = ${(-180 / Zd).toFixed(3)}° relative to its holes (export gives both).`; warns.push("Dual disc with " + (Zd % 2 === 0 ? "even Zd" : "odd hole count") + ": the two discs are not interchangeable. Use odd Zd + even hole count for one part number."); }
+  }
+  if (p.useBrg && p.brgB > p.b) warns.push(`Bearing ${p.brgName} width ${p.brgB} mm > disc thickness ${p.b} mm.`);
+  if (!rv && !p.integralEcc && p.brgID / 2 < p.shaftD / 2 + e) warns.push(`Eccentric cam (bearing ID ${p.brgID}) cannot be a sleeve over the Ø${p.shaftD} shaft: needs bearing ID ≥ shaft Ø + 2e = ${(p.shaftD + 2 * e).toFixed(2)} mm, or an integral eccentric shaft.`);
+  if (rv && p.Ro - holeR < p.shaftD / 2 + e + 0.5) warns.push("Crank bores encroach on the input shaft clearance.");
+  return { p, errs, warns, N, Zd, e, rg, K1, pitch, wall, prof, th, kap, kth, rhoConv, rootR, tipR, holes, holeR, minLig, discNote, rat: ratios(p), rv,
+    w: Math.ceil(N / p.Zp) + 4 };
+}
+
+/* ---------- one crank position ---------- */
+function frame(M, phiDeg) {
+  const p = M.p, phi = phiDeg / R2D, out = -phi / M.Zd; // output (= disc 1 spin) [R2]
+  const discs = [];
+  const nd = p.dual ? 2 : 1;
+  for (let k = 0; k < nd; k++) {
+    const crank = phi + k * Math.PI;
+    discs.push({ k, crank, spin: -crank / M.Zd, cx: M.e * Math.cos(crank), cy: M.e * Math.sin(crank), holeSpin: out });
+  }
+  return { phi, out, discs };
+}
+const holeWorld = (h, d) => { const [x, y] = rot(h.x, h.y, d.holeSpin); return [x + d.cx, y + d.cy]; };
+const profWorld = (M, d, i) => { const [x, y] = rot(M.prof.X[i], M.prof.Y[i], d.spin); return [x + d.cx, y + d.cy]; };
+
+/* ---------- loads on one disc [R3] ---------- */
+const discTorque = p => Math.max(0, p.Tdes) * 1000 * (p.dual ? p.share : 1); // N·mm per disc
+function loads(M, d, out, matD, matP, ringOnly) {
+  const p = M.p, Zp = p.Zp, e = M.e;
+  const Td = discTorque(p);
+  const ux = Math.cos(d.crank), uy = Math.sin(d.crank), Px = e * Zp * ux, Py = e * Zp * uy; // pitch point
+  const pins = []; let S = 0, clrMin = Infinity;
+  for (let i = 0; i < Zp; i++) {
+    const a = i / Zp * TAU, cx = p.Rp * Math.cos(a), cy = p.Rp * Math.sin(a);
+    const [lx, ly] = rot(cx - d.cx, cy - d.cy, -d.spin), nr = nearest(M.prof, lx, ly, M.w);
+    const clr = nr.d - p.rrp; if (clr < clrMin) clrMin = clr;
+    let vx = Px - cx, vy = Py - cy; const vl = Math.hypot(vx, vy); vx /= vl; vy /= vl;
+    const m = (cx - d.cx) * vy - (cy - d.cy) * vx; // moment arm (signed) about disc centre
+    const loaded = m < 0, l = Math.abs(m);
+    if (loaded) S += l * l;
+    const alpha = Math.acos(Math.min(1, l / Math.hypot(cx - d.cx, cy - d.cy))) * R2D;
+    pins.push({ i, cx, cy, vx, vy, l, loaded, alpha, kap: M.kap[nr.i], clr, F: 0, sH: 0 });
+  }
+  const rd = e * M.Zd; const Fmax = S > 0 ? Td * rd / S : 0;
+  let Fx = 0, Fy = 0, sHmax = 0, Fpk = 0, aMax = 0, Fsum = 0;
+  for (const q of pins) if (q.loaded) {
+    q.F = Fmax * q.l / rd; q.sH = hertz(q.F, 1 / p.rrp + q.kap, p.b, matD, matP);
+    Fx += q.F * q.vx; Fy += q.F * q.vy; sHmax = Math.max(sHmax, q.sH); Fpk = Math.max(Fpk, q.F);
+    aMax += q.F * q.alpha; Fsum += q.F;
+  }
+  aMax = Fsum ? aMax / Fsum : 0;
+  const res = { pins, Fpk, sHmax, aMax, clrMin, Px, Py, ringFx: Fx, ringFy: Fy, outPins: [], Qpk: 0, sHo: 0, sb: 0, brg: 0, brgEach: [] };
+  if (ringOnly) return res;
+  if (M.rv) { // crank bearings supply net force + torque, shared equally [approx]
+    for (let k = 0; k < p.Ncrank; k++) {
+      const a = k / p.Ncrank * TAU + d.holeSpin, ft = Td / (p.Ncrank * p.Ro);
+      const fx = -Fx / p.Ncrank - ft * Math.sin(a), fy = -Fy / p.Ncrank + ft * Math.cos(a);
+      res.brgEach.push(Math.hypot(fx, fy));
+    }
+    res.brg = Math.max(...res.brgEach);
+  } else { // output pins: force on disc always along −ê (hole centre − pin centre = e·ê)
+    let S2 = 0; const op = [];
+    for (let j = 0; j < p.Zo; j++) {
+      const a = j / p.Zo * TAU + out, x = p.Ro * Math.cos(a), y = p.Ro * Math.sin(a);
+      const l = -(x * uy - y * ux); op.push({ j, x, y, l: Math.max(0, l), Q: 0 }); if (l > 0) S2 += l * l;
+    }
+    const Qmax = S2 > 0 ? Td * p.Ro / S2 : 0; let Qs = 0;
+    for (const o of op) { o.Q = Qmax * o.l / p.Ro; Qs += o.Q; res.Qpk = Math.max(res.Qpk, o.Q); }
+    res.outPins = op;
+    res.sHo = hertz(res.Qpk, 1 / p.rop - 1 / M.holeR, p.b, matD, matP);
+    const arm = p.gap + (p.dual ? 1.5 : 0.5) * p.b; // cantilever: support → far disc mid-plane
+    res.sb = 32 * res.Qpk * arm / (Math.PI * (2 * p.rop) ** 3);
+    res.brg = Math.hypot(-(Fx - Qs * ux), -(Fy - Qs * uy));
+  }
+  return res;
+}
+
+/* ---------- full sweep ---------- */
+function sweep(M, S) {
+  const p = M.p, mD = MAT[p.matD], mP = MAT[p.matP];
+  const phis = [], sH = [], Fp = [], brg = [], Qp = [], aM = [];
+  let clrMin = Infinity, clrMax = -Infinity, holeClrMin = Infinity;
+  for (let s = 0; s < S; s++) {
+    const phi = s / S * 360, f = frame(M, phi);
+    let L1 = null;
+    for (const d of f.discs) {
+      const L = loads(M, d, f.out, mD, mP);
+      if (!L1) L1 = L; // disc 2 is the same load history shifted 180°
+      for (const q of L.pins) { clrMin = Math.min(clrMin, q.clr); clrMax = Math.max(clrMax, q.clr); }
+      if (!M.rv) for (let j = 0; j < p.Zo; j++) { // real check of hole vs pin positions
+        const h = M.holes[j + 1], [hx, hy] = holeWorld(h, d), a = j / p.Zo * TAU + f.out;
+        holeClrMin = Math.min(holeClrMin, h.r - p.rop - Math.hypot(hx - p.Ro * Math.cos(a), hy - p.Ro * Math.sin(a)));
+      }
+    }
+    phis.push(phi); sH.push(L1.sHmax); Fp.push(L1.Fpk); brg.push(L1.brg); Qp.push(L1.Qpk); aM.push(L1.aMax);
+  }
+  return finish(M, { phis, sH, Fp, brg, Qp, aM, clrMin, clrMax, holeClrMin });
+}
+function finish(M, R) { // shared by sweep() and the optimizer
+  const p = M.p, mD = MAT[p.matD], mP = MAT[p.matP], op = p.op || opPoint(p), r = op.r;
+  const pexp = p.brgType === "roller" ? 10 / 3 : 3, S = R.brg.length, mx = a => Math.max(...a);
+  const Peq = Math.pow(R.brg.reduce((a, b) => a + b ** pexp, 0) / S, 1 / pexp), Pmax = mx(R.brg);
+  const nOut = p.nIn / r.total;
+  const nRel = M.rv ? p.Zp * nOut : (p.nIn / r.pre) * p.Zp / M.Zd; // bearing relative speed [R6]
+  let L10h = Infinity, s0 = Infinity, Creq = 0, C0req = p.s0min * Pmax / 1000;
+  if (nRel > 0) Creq = Peq * Math.pow(p.Lreq * 60 * nRel / 1e6, 1 / pexp) / 1000; // kN
+  if (p.useBrg) { if (nRel > 0 && Peq > 0) L10h = 1e6 / (60 * nRel) * Math.pow(p.brgC * 1000 / Peq, pexp); s0 = Pmax > 0 ? p.brgC0 * 1000 / Pmax : Infinity; }
+  const QpkMax = M.rv ? 0 : mx(R.Qp);
+  const sHo = M.rv ? 0 : hertz(QpkMax, 1 / p.rop - 1 / M.holeR, p.b, mD, mP);
+  const sb = M.rv ? 0 : 32 * QpkMax * (p.gap + (p.dual ? 1.5 : 0.5) * p.b) / (Math.PI * (2 * p.rop) ** 3);
+  const sHall = Math.min(mD.sH, mP.sH), sHmax = mx(R.sH);
+  const SF = { ring: sHmax > 0 ? sHall / sHmax : Infinity, outH: M.rv || !(sHo > 0) ? Infinity : sHall / sHo, bend: M.rv || !(sb > 0) ? Infinity : mP.sy / sb,
+    life: p.useBrg ? Math.pow(L10h / p.Lreq, 1 / pexp) : Infinity, stat: p.useBrg ? s0 / p.s0min : Infinity, motor: p.useMotor ? op.margin : Infinity };
+  const speedOK = !p.useBrg || !(p.brgNlim > 0) || nRel <= p.brgNlim;
+  const backlash = 2 * (p.dr / (M.e * M.Zd) + (M.rv ? 0 : p.tol / p.Ro)) * R2D * 60; // arcmin, rigid-body estimate
+  return { ...R, Peq, Pmax, nOut, nRel, L10h, s0, Creq, C0req, speedOK, sHo, sb, QpkMax, sHall, SF, op,
+    SFmin: Math.min(...Object.values(SF)), backlash, Tin: op.Tdes / (r.total * r.eta), sHmax, Fmax: mx(R.Fp), aMax: mx(R.aM) };
+}
+
+/* SF and life across the motor speed range (re-uses the geometry, only torque/speed change) */
+function rpmScan(M, n) {
+  const p = M.p, nmax = p.useMotor ? motorNmax(motorPts(p)) : Math.max(100, 2 * p.nIn), out = [];
+  for (let k = 0; k <= n; k++) {
+    const q = prepare({ ...p, nIn: nmax * k / n }), S = sweep({ ...M, p: q }, 36);
+    out.push({ n: q.nIn, SF: S.SF, SFmin: S.SFmin, Tav: q.op.Tav, L10h: S.L10h });
+  }
+  return out;
+}
+
+/* ---------- optimizer ----------
+ Free variables: Zp (from ratio or motor match), ring pin Ø, K1, hole layout (count × output pin Ø), bearing,
+ and — if the user allows — housing OD, disc material and disc thickness.
+ Stage A (per housing OD): ring geometry → profile, undercut, ring loads at S crank angles (expensive, done once).
+ Stage B: hole layouts and bearings → analytic output/bearing loads; material and thickness enter by exact scaling:
+   σH ∝ √(F·ΣK / (b·(η_disc+η_pin)))  →  σH(b, mat) = σH0·√((b0/b)·(η0/η))           [R4]
+   σ_bend = 32·Q·a/(π·d³), a = gap + k·b (k = 0.5 single, 1.5 dual)
+ Stage C: the best candidates are re-verified with the full solver.
+ Ranking: candidates meeting the target SF first (sorted by the chosen objective), then the rest by SF. */
+const OBJ = {
+  strong: { n: "Strongest (max governing SF)", key: o => -(o.SFmin + 1e-3 * Math.min(o.mech, 100)) },
+  od: { n: "Smallest housing OD meeting target", key: o => o.OD * 1e3 - o.SFmin - 1e-3 * Math.min(o.mech, 100) },
+  backlash: { n: "Lowest backlash meeting target", key: o => o.backlash * 1e3 - o.SFmin - 1e-3 * Math.min(o.mech, 100) },
+  mass: { n: "Lightest discs meeting target", key: o => o.mass * 1e3 - o.SFmin - 1e-3 * Math.min(o.mech, 100) }
+};
+const etaPair = (mD, mP) => eta(mD) + eta(mP);
+function discMass(rho, b, tipR, holes) { // g, rho in g/cm³
+  let A = Math.PI * tipR * tipR; for (const h of holes) A -= Math.PI * h.r * h.r; return rho * A * b / 1000;
+}
+async function optimize(base, o, onProgress) {
+  const sizes = base.sizes, S = 24, target = o.target;
+  const mats = o.mats.length ? o.mats : [base.matD], bs = o.bs.length ? o.bs : [base.b], ods = o.ods.length ? o.ods : [base.housingOD];
+  let zps = [], match = null;
+  if (base.useMotor && base.ratioSrc === "motor") { match = motorMatch(base); zps = match.cands.map(c => c.Zp); }
+  else {
+    const T = base.target, tol = base.ratioTol / 100;
+    for (let Zp = 6; Zp <= 150; Zp++) if (Math.abs(totalRatioFor(base, Zp) - T) / T <= tol) zps.push(Zp);
+    if (!zps.length) { let bz = 6, be = Infinity; for (let Zp = 6; Zp <= 150; Zp++) { const er = Math.abs(totalRatioFor(base, Zp) - T); if (er < be) { be = er; bz = Zp; } } zps = [bz]; }
+    zps = zps.slice(0, 6);
+  }
+  const rv = base.mode === "rv", mP = MAT[base.matP], mD0 = MAT[base.matD], b0 = base.b, eta0 = etaPair(mD0, mP);
+  const brgs = base.useBrg ? base.lib.filter(b => b.use && b.d > 0 && b.D > b.d) : [{ name: "(envelope)", d: base.brgID, D: base.brgOD, B: base.brgB, C: 0, C0: 0, nlim: 0, type: base.brgType, idx: -1 }];
+  let pool = [], tried = 0, valid = 0;
+  const keyF = OBJ[o.objective].key;
+  const rank = (x, y) => { const fx_ = x.SFmin >= target, fy = y.SFmin >= target; if (fx_ !== fy) return fx_ ? -1 : 1; return fx_ ? keyF(x) - keyF(y) : y.SFmin - x.SFmin; };
+  const prune = () => { pool.sort(rank); const seen = new Set(), keep = [];
+    for (const c of pool) { const k = [c.Zp, c.rrp, c.mat, c.b, c.OD].join("|"); if (seen.has(k)) continue; seen.add(k); keep.push(c); if (keep.length >= 400) break; }
+    pool = keep; };
+  let step = 0; const steps = ods.length * zps.length;
+  for (const OD of ods) for (const Zp of zps) {
+    step++; onProgress && onProgress(step / steps, OD, Zp); await new Promise(r => setTimeout(r, 0));
+    const nIn = base.useMotor && base.ratioSrc === "motor" && base.nOutReq > 0 ? base.nOutReq * totalRatioFor(base, Zp) : base.nIn;
+    const P0 = prepare({ ...base, Zp, nIn, housingOD: OD }), Td = discTorque(P0), r = P0.op.r, Zd = Zp - 1;
+    for (const dpin of (base.lockRing ? [2 * base.rrp] : sizes)) {
+      const rrp = dpin / 2, Rp = base.lockRing ? base.Rp : Math.floor((OD / 2 - base.wallMin - rrp) * 10) / 10;
+      if (Rp <= 0 || TAU * Rp / Zp - dpin < base.lig || Rp + rrp + base.wallMin > OD / 2) continue;
+      for (let K1 = 0.45; K1 <= 0.851; K1 += 0.05) {
+        const e = Math.round(K1 * Rp / Zp * 1000) / 1000; if (e < 0.05) continue;
+        { const rk = rrp + (base.pocketAllow || 0) / 2; if (rrp + base.dr - 2 * e - (base.boreClr || 0.25) < -0.7 * rk) continue; } // lobes would swing out past the pin pockets
+        const cand0 = { ...P0, Zp, Rp, rrp, ecc: e };
+        const M = build(cand0, { N: 720, Nth: 720, ringOnly: true });
+        if (M.errs.length) continue;
+        const ring = [];
+        for (let s = 0; s < S; s++) { const f = frame(M, s / S * 360), L = loads(M, f.discs[0], f.out, mD0, mP, true); ring.push({ crank: f.discs[0].crank, out: f.out, Fx: L.ringFx, Fy: L.ringFy, sH: L.sHmax, a: L.aMax }); }
+        const sH0 = Math.max(...ring.map(x => x.sH)), aMax = Math.max(...ring.map(x => x.a));
+        const rootR = Rp - rrp - base.dr - e, tipR = Rp - rrp - base.dr + e;
+        for (const bg of brgs) {
+          if (!rv && !base.integralEcc && bg.d < base.shaftD + 2 * e) continue;
+          if (!rv && !base.integralEcc && (bg.d - base.journalAllow) / 2 - e - 0.3 - (base.shaftD + base.holeAllow) / 2 < 1) continue; // cam wall the CAD export can build
+          const pexp = bg.type === "roller" ? 10 / 3 : 3;
+          const layouts = rv ? [{ n: base.Ncrank, od: 0 }] : [4, 6, 8, 10, 12].flatMap(n => (base.lockOut ? [2 * base.rop] : sizes).map(od => ({ n, od })));
+          for (const lay of layouts) {
+            const hR = rv ? bg.D / 2 : lay.od / 2 + e + base.tol, inner = rv ? base.shaftD / 2 + e + 0.5 : bg.D / 2;
+            const lo = inner + base.lig + hR, hi = rootR - base.lig - hR;
+            if (lo > hi) continue;
+            const Ro = Math.round((lo + hi) / 2 * 10) / 10;
+            if (2 * Ro * Math.sin(Math.PI / lay.n) - 2 * hR < base.lig) continue;
+            tried++;
+            let QpkMax = 0; const brgL = [];
+            for (const g of ring) {
+              const ux = Math.cos(g.crank), uy = Math.sin(g.crank);
+              if (rv) { let worst = 0; for (let k = 0; k < lay.n; k++) { const a = k / lay.n * TAU + g.out, ft = Td / (lay.n * Ro);
+                  worst = Math.max(worst, Math.hypot(-g.Fx / lay.n - ft * Math.sin(a), -g.Fy / lay.n + ft * Math.cos(a))); } brgL.push(worst); }
+              else { let S2 = 0; const ls = [];
+                for (let j = 0; j < lay.n; j++) { const a = j / lay.n * TAU + g.out, l = -(Ro * Math.cos(a) * uy - Ro * Math.sin(a) * ux); if (l > 0) { S2 += l * l; ls.push(l); } }
+                const Qm = S2 > 0 ? Td * Ro / S2 : 0; let Qs = 0; for (const l of ls) Qs += Qm * l / Ro;
+                QpkMax = Math.max(QpkMax, Qm * Math.max(0, ...ls) / Ro); brgL.push(Math.hypot(g.Fx - Qs * ux, g.Fy - Qs * uy)); }
+            }
+            const Peq = Math.pow(brgL.reduce((a, x) => a + x ** pexp, 0) / S, 1 / pexp), Pmx = Math.max(...brgL);
+            const nRel = rv ? Zp * nIn / r.total : (nIn / r.pre) * Zp / Zd;
+            const L10h = base.useBrg ? (nRel > 0 ? 1e6 / (60 * nRel) * Math.pow(bg.C * 1000 / Peq, pexp) : Infinity) : Infinity;
+            const SFlife = base.useBrg ? Math.pow(L10h / base.Lreq, 1 / pexp) : Infinity, SFstat = base.useBrg ? bg.C0 * 1000 / Pmx / base.s0min : Infinity;
+            const SFmot = base.useMotor ? P0.op.margin : Infinity, SFspd = base.useBrg && bg.nlim > 0 && nRel > bg.nlim ? 0 : Infinity;
+            const sHo0 = rv ? 0 : hertz(QpkMax, 2 / lay.od - 1 / hR, b0, mD0, mP);
+            const holes = rv ? [{ r: inner - 0 }, ...Array(lay.n).fill({ r: hR })] : [{ r: bg.D / 2 }, ...Array(lay.n).fill({ r: hR })];
+            const backlash = 2 * (base.dr / (e * Zd) + (rv ? 0 : base.tol / Ro)) * R2D * 60;
+            valid++;
+            for (const mk of mats) { const mD = MAT[mk], sHall = Math.min(mD.sH, mP.sH), sc0 = eta0 / etaPair(mD, mP);
+              for (const b of bs) {
+                if (base.useBrg && bg.B > b) continue;
+                const sc = Math.sqrt(sc0 * b0 / b);
+                const SF = { ring: sHall / (sH0 * sc), life: SFlife, stat: SFstat, motor: SFmot, speed: SFspd, outH: Infinity, bend: Infinity };
+                if (!rv) { SF.outH = sHall / (sHo0 * sc); SF.bend = mP.sy / (32 * QpkMax * (base.gap + (base.dual ? 1.5 : 0.5) * b) / (Math.PI * lay.od ** 3)); }
+                const SFmin = Math.min(...Object.values(SF)), mech = Math.min(SF.ring, SF.outH, SF.bend, SF.life, SF.stat);
+                pool.push({ mech, Zp, Rp, rrp, ecc: e, Ro, n: lay.n, od: lay.od, bg, nIn, SFmin, aMax, OD, mat: mk, b, backlash,
+                  mass: (base.dual ? 2 : 1) * discMass(mD.rho, b, tipR, holes) });
+              } }
+            if (pool.length > 6000) prune();
+          }
+        }
+      }
+    }
+  }
+  prune();
+  const seen = new Set(), pre = [];
+  for (const c of pool) { const k = [c.Zp, c.rrp, c.mat, c.b, c.OD].join("|"); if (seen.has(k)) continue; seen.add(k); pre.push(c); if (pre.length >= 24) break; }
+  const top = [];
+  for (const c of pre) {
+    const q0 = { ...base, Zp: c.Zp, Rp: c.Rp, rrp: c.rrp, ecc: c.ecc, Ro: c.Ro, nIn: c.nIn, housingOD: c.OD, matD: c.mat, b: c.b };
+    if (rv) q0.Ncrank = c.n; else { q0.Zo = c.n; q0.rop = c.od / 2; }
+    if (base.useBrg) Object.assign(q0, { brgSel: c.bg.idx, brgName: c.bg.name, brgID: c.bg.d, brgOD: c.bg.D, brgB: c.bg.B, brgC: c.bg.C, brgC0: c.bg.C0, brgNlim: c.bg.nlim, brgType: c.bg.type });
+    const q = prepare(q0), M = build(q, { N: 1440 });
+    if (M.errs.length) continue;
+    const Sv = sweep(M, 72);
+    const D = typeof driveParts === "function" && base.mode === "none" ? driveParts(M, cadOpts(q)) : null;
+    top.push({ cand: q0, M, S: Sv, D, cadOk: !D || !D.errs.length, ratio: M.rat.total, mass: c.mass, SFmin: Sv.SFmin, mech: mechSF(Sv.SF), OD: c.OD, backlash: Sv.backlash });
+  }
+  top.sort((x, y) => (x.cadOk === y.cadOk ? rank(x, y) : x.cadOk ? -1 : 1)); top.splice(12);
+  return { zps, tried, valid, top, match, target, objective: o.objective };
+}
+
+/* ---------- advisor: what to change, with numbers ---------- */
+const SFNAME = { ring: "ring-pin contact", outH: "output-pin contact", bend: "output-pin bending", life: "bearing life", stat: "bearing static load", motor: "motor torque", speed: "bearing speed limit" };
+const mechSF = SF => Math.min(SF.ring, SF.outH, SF.bend, SF.life, SF.stat);
+function evalVariant(M, over, rebuild) {
+  const q = prepare({ ...M.p, ...over });
+  if (!rebuild) return sweep({ ...M, p: q }, 72);
+  const M2 = build(q, { N: 1440 }); return M2.errs.length ? null : sweep(M2, 72);
+}
+function torqueCapacity(M, target) { // output torque at which the mechanical SF equals the target
+  let lo = 1e-3, hi = 1e3;
+  for (let k = 0; k < 18; k++) { const mid = Math.sqrt(lo * hi), q = prepare({ ...M.p, useMotor: false, basis: "load", Tout: mid }), Sx = sweep({ ...M, p: q }, 36);
+    if (mechSF(Sx.SF) >= target) lo = mid; else hi = mid; }
+  return lo;
+}
+function advise(M, S, target) {
+  const p = M.p, gov = Object.entries(S.SF).reduce((a, b) => b[1] < a[1] ? b : a);
+  const rows = [], add = (label, over, Sx, why) => Sx && rows.push({ label, over, SFmin: Sx.SFmin, gov: Object.entries(Sx.SF).reduce((a, b) => b[1] < a[1] ? b : a)[0], why });
+  for (const k of Object.keys(MAT)) if (k !== p.matD) add(`Disc material → ${MAT[k].n}`, { matD: k }, evalVariant(M, { matD: k }));
+  const sfC = Math.min(S.SF.ring, S.SF.outH);
+  let note = "";
+  if (sfC < target) { const bReq = Math.ceil(p.b * (target / sfC) ** 2 * 2) / 2;
+    if (bReq <= 3 * p.b) add(`Disc thickness ${p.b} → ${bReq} mm`, { b: bReq }, evalVariant(M, { b: bReq }), "contact SF ∝ √b, so b_req = b·(SF_target/SF)²");
+    else { note = `Thickness alone would need b ≈ ${bReq} mm (contact SF ∝ √b) — not practical.`; const b2 = Math.min(2 * p.b, 40);
+      add(`Disc thickness ${p.b} → ${b2} mm (×2)`, { b: b2 }, evalVariant(M, { b: b2 }), "contact SF rises only with √b"); } }
+  if (p.useMotor && p.basis !== "load") add("Strength check on load torque only (needs a current limit / slip clutch so the motor can't stall the joint)", { basis: "load" }, evalVariant(M, { basis: "load" }));
+  if (p.dual === false) add("Use two discs (each carries ≈ share × T)", { dual: true }, evalVariant(M, { dual: true }, true));
+  if (p.useBrg && (gov[0] === "life" || gov[0] === "stat" || S.SF.life < target || S.SF.stat < target)) {
+    const alts = [];
+    p.lib.forEach((b, i) => { if (i === p.brgSel || !b.use) return;
+      const Sx = evalVariant(M, { brgSel: i, brgName: b.name, brgID: b.d, brgOD: b.D, brgB: b.B, brgC: b.C, brgC0: b.C0, brgNlim: b.nlim, brgType: b.type }, true);
+      if (Sx) alts.push({ b, i, Sx }); });
+    alts.sort((a, b) => b.Sx.SFmin - a.Sx.SFmin).slice(0, 3).forEach(a => add(`Bearing → ${a.b.name} (${a.b.d}×${a.b.D}×${a.b.B})`, { brgSel: a.i }, a.Sx));
+  }
+  rows.sort((a, b) => b.SFmin - a.SFmin);
+  const better = rows.filter(r => r.SFmin > S.SFmin * 1.01);
+  const cap = torqueCapacity(M, target);
+  return { gov, rows: (better.length ? better : rows).slice(0, 9), cap, target, note };
+}
+
+/* ---------- exports ---------- */
+function discOutline(M, discIdx, n) { // disc-body frame; disc 2 profile indexed −π/Zd vs holes
+  const off = discIdx === 1 ? -Math.PI / M.Zd : 0, pts = [], N = M.prof.N, st = N / n;
+  for (let i = 0; i < n; i++) { const k = Math.floor(i * st); pts.push(rot(M.prof.X[k], M.prof.Y[k], off)); }
+  return pts;
+}
+function exportDXF(M) {
+  const p = M.p, L = ["0", "SECTION", "2", "ENTITIES"], R = p.housingOD / 2 + 5;
+  const poly = (pts, layer, dx) => { L.push("0", "LWPOLYLINE", "8", layer, "90", String(pts.length), "70", "1"); for (const [x, y] of pts) L.push("10", (x + dx).toFixed(6), "20", y.toFixed(6)); };
+  const circ = (x, y, r, layer) => L.push("0", "CIRCLE", "8", layer, "10", x.toFixed(6), "20", y.toFixed(6), "30", "0", "40", r.toFixed(6));
+  const nd = p.dual ? 2 : 1;
+  for (let k = 0; k < nd; k++) { const dx = k * 2 * R; poly(discOutline(M, k, 1440), `DISC${k + 1}_PROFILE`, dx); for (const h of M.holes) circ(h.x + dx, h.y, h.r, `DISC${k + 1}_HOLES`); }
+  const dx = -2 * R;
+  for (let i = 0; i < p.Zp; i++) circ(dx + p.Rp * Math.cos(i / p.Zp * TAU), p.Rp * Math.sin(i / p.Zp * TAU), p.rrp, "RING_PINS");
+  circ(dx, 0, p.housingOD / 2, "HOUSING_OD");
+  if (!M.rv) for (let j = 0; j < p.Zo; j++) circ(dx + p.Ro * Math.cos(j / p.Zo * TAU), p.Ro * Math.sin(j / p.Zo * TAU), p.rop, "OUTPUT_PINS");
+  L.push("0", "ENDSEC", "0", "EOF");
+  return L.join("\n");
+}
+function exportSVG(M) {
+  const p = M.p, R = p.housingOD / 2 + 5, nd = p.dual ? 2 : 1, W = (nd + 1) * 2 * R, g = [];
+  const path = (pts, dx) => "M" + pts.map(([x, y]) => (x + dx).toFixed(4) + " " + (-y).toFixed(4)).join("L") + "Z";
+  const c = (x, y, r, col) => `<circle cx="${x.toFixed(4)}" cy="${(-y).toFixed(4)}" r="${r.toFixed(4)}" fill="none" stroke="${col}" stroke-width="0.1"/>`;
+  for (let k = 0; k < nd; k++) { const dx = k * 2 * R; g.push(`<g id="disc${k + 1}"><path d="${path(discOutline(M, k, 1440), dx)}" fill="none" stroke="#000" stroke-width="0.1"/>${M.holes.map(h => c(h.x + dx, h.y, h.r, "#000")).join("")}</g>`); }
+  const dx = -2 * R; const pins = [];
+  for (let i = 0; i < p.Zp; i++) pins.push(c(dx + p.Rp * Math.cos(i / p.Zp * TAU), p.Rp * Math.sin(i / p.Zp * TAU), p.rrp, "#0067b8"));
+  if (!M.rv) for (let j = 0; j < p.Zo; j++) pins.push(c(dx + p.Ro * Math.cos(j / p.Zo * TAU), p.Ro * Math.sin(j / p.Zo * TAU), p.rop, "#1a8f3a"));
+  g.push(`<g id="pins">${pins.join("")}${c(dx, 0, p.housingOD / 2, "#999")}</g>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(2)}mm" height="${(2 * R).toFixed(2)}mm" viewBox="${(-3 * R).toFixed(3)} ${(-R).toFixed(3)} ${W.toFixed(3)} ${(2 * R).toFixed(3)}">\n${g.join("\n")}\n</svg>`;
+}
+function exportCSV(M) {
+  const rows = ["kind,index,x_mm,y_mm,r_mm"], f = v => v.toFixed(6);
+  const nd = M.p.dual ? 2 : 1;
+  for (let k = 0; k < nd; k++) discOutline(M, k, M.N).forEach(([x, y], i) => rows.push(`disc${k + 1}_profile,${i},${f(x)},${f(y)},`));
+  M.holes.forEach((h, i) => rows.push(`disc_hole_${h.kind.replace(/ /g, "_")},${i},${f(h.x)},${f(h.y)},${f(h.r)}`));
+  for (let i = 0; i < M.p.Zp; i++) rows.push(`ring_pin,${i},${f(M.p.Rp * Math.cos(i / M.p.Zp * TAU))},${f(M.p.Rp * Math.sin(i / M.p.Zp * TAU))},${f(M.p.rrp)}`);
+  if (!M.rv) for (let j = 0; j < M.p.Zo; j++) rows.push(`output_pin,${j},${f(M.p.Ro * Math.cos(j / M.p.Zo * TAU))},${f(M.p.Ro * Math.sin(j / M.p.Zo * TAU))},${f(M.p.rop)}`);
+  return rows.join("\n");
+}
+function exportSTEP(M, discIdx, nSeg) {
+  /* AP214 B-rep solid: faceted outer profile (planar faces) + true cylindrical holes. Disc frame, centred at origin. */
+  const p = M.p, poly = discOutline(M, discIdx, nSeg || 720), n = poly.length, zB = -p.b / 2, zT = p.b / 2;
+  let id = 1; const R = [], A = s => { const r = "#" + id++; R.push(r + "=" + s + ";"); return r; }, F = v => (Math.abs(v) < 1e-12 ? 0 : v).toFixed(6);
+  const cp = (x, y, z) => A(`CARTESIAN_POINT('',(${F(x)},${F(y)},${F(z)}))`), dir = (x, y, z) => A(`DIRECTION('',(${F(x)},${F(y)},${F(z)}))`);
+  const ax3 = (x, y, z, n_, r_) => A(`AXIS2_PLACEMENT_3D('',${cp(x, y, z)},${dir(...n_)},${dir(...r_)})`);
+  const ctx = A("APPLICATION_CONTEXT('automotive design')");
+  A(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,${ctx})`);
+  const pc = A(`PRODUCT_CONTEXT('',${ctx},'mechanical')`);
+  const name = `CYCLO_DISC_${discIdx + 1}`;
+  const prod = A(`PRODUCT('${name}','${name}','',(${pc}))`);
+  const pdf = A(`PRODUCT_DEFINITION_FORMATION('','',${prod})`);
+  const pdc = A(`PRODUCT_DEFINITION_CONTEXT('part definition',${ctx},'design')`);
+  const pd = A(`PRODUCT_DEFINITION('design','',${pdf},${pdc})`);
+  const pds = A(`PRODUCT_DEFINITION_SHAPE('','',${pd})`);
+  const lu = A("(LENGTH_UNIT()NAMED_UNIT(*)SI_UNIT(.MILLI.,.METRE.))"), au = A("(NAMED_UNIT(*)PLANE_ANGLE_UNIT()SI_UNIT($,.RADIAN.))"), su = A("(NAMED_UNIT(*)SOLID_ANGLE_UNIT()SI_UNIT($,.STERADIAN.))");
+  const unc = A(`UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-06),${lu},'distance_accuracy_value','')`);
+  const gctx = A(`(GEOMETRIC_REPRESENTATION_CONTEXT(3)GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${unc}))GLOBAL_UNIT_ASSIGNED_CONTEXT((${lu},${au},${su}))REPRESENTATION_CONTEXT('',''))`);
+  const vtx = (x, y, z) => A(`VERTEX_POINT('',${cp(x, y, z)})`);
+  const lineEdge = (va, a, vb, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz);
+    const ln = A(`LINE('',${cp(...a)},${A(`VECTOR('',${dir(dx / l, dy / l, dz / l)},${F(l)})`)})`); return A(`EDGE_CURVE('',${va},${vb},${ln},.T.)`); };
+  const oe = (e, s) => A(`ORIENTED_EDGE('',*,*,${e},.${s ? "T" : "F"}.)`);
+  const loop = es => A(`EDGE_LOOP('',(${es.join(",")}))`);
+  const plane = (x, y, z, nn, rr) => A(`PLANE('',${ax3(x, y, z, nn, rr)})`);
+  const faces = [];
+  const vb = [], vt = [];
+  for (let i = 0; i < n; i++) { vb.push(vtx(poly[i][0], poly[i][1], zB)); vt.push(vtx(poly[i][0], poly[i][1], zT)); }
+  const eb = [], et = [], ev = [];
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n;
+    eb.push(lineEdge(vb[i], [poly[i][0], poly[i][1], zB], vb[j], [poly[j][0], poly[j][1], zB]));
+    et.push(lineEdge(vt[i], [poly[i][0], poly[i][1], zT], vt[j], [poly[j][0], poly[j][1], zT]));
+    ev.push(lineEdge(vb[i], [poly[i][0], poly[i][1], zB], vt[i], [poly[i][0], poly[i][1], zT])); }
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n, tx = poly[j][0] - poly[i][0], ty = poly[j][1] - poly[i][1], tl = Math.hypot(tx, ty);
+    const lp = loop([oe(eb[i], 1), oe(ev[j], 1), oe(et[i], 0), oe(ev[i], 0)]);
+    faces.push(A(`ADVANCED_FACE('',(${A(`FACE_OUTER_BOUND('',${lp},.T.)`)}),${plane((poly[i][0] + poly[j][0]) / 2, (poly[i][1] + poly[j][1]) / 2, 0, [ty / tl, -tx / tl, 0], [tx / tl, ty / tl, 0])},.T.)`)); }
+  const botB = [A(`FACE_OUTER_BOUND('',${loop(eb.slice().reverse().map(e => oe(e, 0)))},.T.)`)], topB = [A(`FACE_OUTER_BOUND('',${loop(et.map(e => oe(e, 1)))},.T.)`)];
+  for (const h of M.holes) {
+    const hb = vtx(h.x + h.r, h.y, zB), ht = vtx(h.x + h.r, h.y, zT);
+    const cb = A(`EDGE_CURVE('',${hb},${hb},${A(`CIRCLE('',${ax3(h.x, h.y, zB, [0, 0, 1], [1, 0, 0])},${F(h.r)})`)},.T.)`);
+    const ct = A(`EDGE_CURVE('',${ht},${ht},${A(`CIRCLE('',${ax3(h.x, h.y, zT, [0, 0, 1], [1, 0, 0])},${F(h.r)})`)},.T.)`);
+    const seam = lineEdge(hb, [h.x + h.r, h.y, zB], ht, [h.x + h.r, h.y, zT]);
+    const cyl = A(`CYLINDRICAL_SURFACE('',${ax3(h.x, h.y, zB, [0, 0, 1], [1, 0, 0])},${F(h.r)})`);
+    faces.push(A(`ADVANCED_FACE('',(${A(`FACE_OUTER_BOUND('',${loop([oe(cb, 0), oe(seam, 1), oe(ct, 1), oe(seam, 0)])},.T.)`)}),${cyl},.F.)`));
+    botB.push(A(`FACE_BOUND('',${loop([oe(cb, 1)])},.T.)`)); topB.push(A(`FACE_BOUND('',${loop([oe(ct, 0)])},.T.)`));
+  }
+  faces.push(A(`ADVANCED_FACE('',(${botB.join(",")}),${plane(0, 0, zB, [0, 0, -1], [1, 0, 0])},.T.)`));
+  faces.push(A(`ADVANCED_FACE('',(${topB.join(",")}),${plane(0, 0, zT, [0, 0, 1], [1, 0, 0])},.T.)`));
+  const solid = A(`MANIFOLD_SOLID_BREP('${name}',${A(`CLOSED_SHELL('',(${faces.join(",")}))`)})`);
+  const rep = A(`ADVANCED_BREP_SHAPE_REPRESENTATION('',(${ax3(0, 0, 0, [0, 0, 1], [1, 0, 0])},${solid}),${gctx})`);
+  A(`SHAPE_DEFINITION_REPRESENTATION(${pds},${rep})`);
+  const ts = new Date().toISOString().slice(0, 19);
+  return ["ISO-10303-21;", "HEADER;", "FILE_DESCRIPTION(('cycloidal disc'),'2;1');", `FILE_NAME('${name}.step','${ts}',(''),(''),'','Cycloidal Drive Designer','');`,
+    "FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));", "ENDSEC;", "DATA;", ...R, "ENDSEC;", "END-ISO-10303-21;"].join("\n");
+}
+/* ---------- CAD: whole-drive solids for STEP export (single-stage layout) ----------
+ Every part is a stack of prismatic sections. A section = one outer loop + hole loops, extruded between two z levels.
+ Loops are made of line and arc segments (arcs/circles become true cylinders in the STEP file; the disc
+ profile is a fine polyline). Between sections a loop may change (shoulder / counterbore) or a hole may start or end
+ (blind hole floor); the solid is written as an AP214 manifold B-rep. */
+const LOOPS = {
+  circ: (x, y, r) => ({ segs: [{ t: "a", x0: x + r, y0: y, cx: x, cy: y, r, ccw: true, full: true }] }),
+  poly: pts => ({ segs: pts.map(([x, y]) => ({ t: "l", x0: x, y0: y })) }),
+  pocketBore(Rp, rk, Z, Rb) { // bore of radius Rb with Z pockets of radius rk centred on the pin circle Rp
+    Rb = Rb || Rp;
+    const d = Math.acos(Math.min(1, (Rp * Rp + Rb * Rb - rk * rk) / (2 * Rp * Rb))), segs = [];
+    for (let i = 0; i < Z; i++) {
+      const th = i / Z * TAU, cx = Rp * Math.cos(th), cy = Rp * Math.sin(th);
+      segs.push({ t: "a", x0: Rb * Math.cos(th - d), y0: Rb * Math.sin(th - d), cx, cy, r: rk, ccw: true });          // pocket, bulging out
+      segs.push({ t: "a", x0: Rb * Math.cos(th + d), y0: Rb * Math.sin(th + d), cx: 0, cy: 0, r: Rb, ccw: true });     // bore arc to next pocket
+    }
+    return { segs };
+  },
+  dflat(r, f) { // shaft bore radius r with a flat at x = f (f < r)
+    const b = Math.acos(f / r);
+    return { segs: [{ t: "a", x0: r * Math.cos(b), y0: r * Math.sin(b), cx: 0, cy: 0, r, ccw: true }, { t: "l", x0: f, y0: -r * Math.sin(b) }] };
+  }
+};
+function segEnd(L, i) { const s = L.segs[(i + 1) % L.segs.length]; return [s.x0, s.y0]; }
+function sampleLoop(L, n = 24) { // polyline approximation (for checks and the section view)
+  const out = [];
+  L.segs.forEach((s, i) => {
+    if (s.t === "l") { out.push([s.x0, s.y0]); return; }
+    const a0 = Math.atan2(s.y0 - s.cy, s.x0 - s.cx); let sw;
+    if (s.full) sw = TAU; else { const [ex, ey] = segEnd(L, i); sw = Math.atan2(ey - s.cy, ex - s.cx) - a0; if (s.ccw) { while (sw <= 0) sw += TAU; } else { while (sw >= 0) sw -= TAU; } }
+    const k = Math.max(2, Math.ceil(n * Math.abs(sw) / TAU));
+    for (let j = 0; j < k; j++) { const a = a0 + sw * j / k; out.push([s.cx + s.r * Math.cos(a), s.cy + s.r * Math.sin(a)]); }
+  });
+  return out;
+}
+const polyArea = P => { let A = 0; for (let i = 0; i < P.length; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length]; A += x1 * y2 - x2 * y1; } return A / 2; };
+function inPoly(P, x, y) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
+const loopInside = (Lin, Lout) => { const Po = sampleLoop(Lout, 96); return sampleLoop(Lin, 96).every(([x, y]) => inPoly(Po, x, y)); };
+
+/* ---- B-rep writer ---- */
+function StepWriter() {
+  let id = 1; const R = [];
+  const A = s => { const r = "#" + id++; R.push(r + "=" + s + ";"); return r; };
+  const F = v => (Math.abs(v) < 1e-12 ? 0 : v).toFixed(6);
+  const cp = (x, y, z) => A(`CARTESIAN_POINT('',(${F(x)},${F(y)},${F(z)}))`), dir = (x, y, z) => A(`DIRECTION('',(${F(x)},${F(y)},${F(z)}))`);
+  const ax3 = (x, y, z, n, r) => A(`AXIS2_PLACEMENT_3D('',${cp(x, y, z)},${dir(...n)},${dir(...r)})`);
+  const vtx = (x, y, z) => A(`VERTEX_POINT('',${cp(x, y, z)})`);
+  const line = (va, a, vb, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz);
+    return A(`EDGE_CURVE('',${va},${vb},${A(`LINE('',${cp(...a)},${A(`VECTOR('',${dir(dx / l, dy / l, dz / l)},${F(l)})`)})`)},.T.)`); };
+  const oe = (e, s) => A(`ORIENTED_EDGE('',*,*,${e},.${s ? "T" : "F"}.)`);
+  const loop = es => A(`EDGE_LOOP('',(${es.join(",")}))`);
+  const ccwLoop = E => loop(E.map(e => oe(e, 1))), cwLoop = E => loop(E.slice().reverse().map(e => oe(e, 0)));
+  const plane = (x, y, z, n, r) => A(`PLANE('',${ax3(x, y, z, n, r)})`);
+  const face = (bounds, surf, same) => A(`ADVANCED_FACE('',(${bounds.map((b, i) => A(`${i ? "FACE_BOUND" : "FACE_OUTER_BOUND"}('',${b},.T.)`)).join(",")}),${surf},.${same === false ? "F" : "T"}.)`);
+  let uid = 0;
+  function solid(part, dx = 0, dy = 0, dz = 0) {
+    const feats = part.feats.map(f => ({ ...f, uid: uid++ }));
+    const zs = [...new Set(feats.flatMap(f => [f.z0, f.z1]).map(z => +z.toFixed(6)))].sort((a, b) => a - b);
+    const secs = [];
+    for (let k = 0; k + 1 < zs.length; k++) {
+      const z0 = zs[k], z1 = zs[k + 1]; if (z1 - z0 < 1e-6) continue;
+      const act = feats.filter(f => f.z0 <= z0 + 1e-9 && f.z1 >= z1 - 1e-9), outer = act.filter(f => !f.hole);
+      if (outer.length !== 1) throw new Error(`${part.name}: ${outer.length} outer loops at z ${z0.toFixed(2)}–${z1.toFixed(2)}`);
+      secs.push({ z0, z1, outer: outer[0], holes: act.filter(f => f.hole) });
+    }
+    const lv = new Map(), vv = new Map(), faces = [];
+    const level = (f, z) => { // vertices + edges of loop f at height z (shared by every face using them)
+      const key = f.uid + "|" + z; if (lv.has(key)) return lv.get(key);
+      const S = f.loop.segs, V = S.map(s => vtx(s.x0 + dx, s.y0 + dy, z + dz)), E = S.map((s, i) => {
+        const j = (i + 1) % S.length, [ex, ey] = segEnd(f.loop, i);
+        if (s.t === "l") return line(V[i], [s.x0 + dx, s.y0 + dy, z + dz], V[j], [ex + dx, ey + dy, z + dz]);
+        const c = A(`CIRCLE('',${ax3(s.cx + dx, s.cy + dy, z + dz, [0, 0, 1], [1, 0, 0])},${F(s.r)})`);
+        return A(`EDGE_CURVE('',${V[i]},${V[j]},${c},.${s.ccw ? "T" : "F"}.)`);
+      });
+      const o = { V, E }; lv.set(key, o); return o;
+    };
+    const side = (f, z0, z1) => {
+      const S = f.loop.segs, b = level(f, z0), t = level(f, z1), out = !f.hole;
+      const vert = i => { const key = f.uid + "|" + z0 + "|" + i; if (vv.has(key)) return vv.get(key);
+        const e = line(b.V[i], [S[i].x0 + dx, S[i].y0 + dy, z0 + dz], t.V[i], [S[i].x0 + dx, S[i].y0 + dy, z1 + dz]); vv.set(key, e); return e; };
+      S.forEach((s, i) => {
+        const j = (i + 1) % S.length, ei = vert(i), ej = vert(j);
+        const L = out ? loop([oe(b.E[i], 1), oe(ej, 1), oe(t.E[i], 0), oe(ei, 0)]) : loop([oe(ei, 1), oe(t.E[i], 1), oe(ej, 0), oe(b.E[i], 0)]);
+        if (s.t === "l") {
+          const [ex, ey] = segEnd(f.loop, i), tx = ex - s.x0, ty = ey - s.y0, tl = Math.hypot(tx, ty) || 1, sg = out ? 1 : -1;
+          faces.push(face([L], plane((s.x0 + ex) / 2 + dx, (s.y0 + ey) / 2 + dy, z0 + dz, [sg * ty / tl, -sg * tx / tl, 0], [tx / tl, ty / tl, 0])));
+        } else faces.push(face([L], A(`CYLINDRICAL_SURFACE('',${ax3(s.cx + dx, s.cy + dy, z0 + dz, [0, 0, 1], [1, 0, 0])},${F(s.r)})`), s.ccw === out));
+      });
+    };
+    const hz = (z, up, outerE, innerEs) => faces.push(face([up ? ccwLoop(outerE) : cwLoop(outerE), ...innerEs.map(E => up ? cwLoop(E) : ccwLoop(E))], plane(dx, dy, z + dz, [0, 0, up ? 1 : -1], [1, 0, 0])));
+    const area = f => Math.abs(polyArea(sampleLoop(f.loop, 48)));
+    secs.forEach((s, k) => {
+      side(s.outer, s.z0, s.z1); s.holes.forEach(h => side(h, s.z0, s.z1));
+      if (k === 0) hz(s.z0, false, level(s.outer, s.z0).E, s.holes.map(h => level(h, s.z0).E));
+      if (k === secs.length - 1) hz(s.z1, true, level(s.outer, s.z1).E, s.holes.map(h => level(h, s.z1).E));
+      if (k === 0) return;
+      const p = secs[k - 1], z = s.z0;
+      if (Math.abs(p.z1 - z) > 1e-6) throw new Error(part.name + ": gap between sections");
+      if (p.outer !== s.outer) { // shoulder
+        const big = area(p.outer) > area(s.outer) ? p.outer : s.outer, sm = big === p.outer ? s.outer : p.outer;
+        if (!loopInside(sm.loop, big.loop)) throw new Error(`${part.name}: outer shapes at z ${z.toFixed(2)} cross each other`);
+        hz(z, big === p.outer, level(big, z).E, [level(sm, z).E]);
+      }
+      const grps = new Set([...p.holes, ...s.holes].map(h => h.grp));
+      for (const g of grps) {
+        const hb = p.holes.find(h => h.grp === g), ha = s.holes.find(h => h.grp === g);
+        if (hb && ha && hb === ha) continue;
+        if (hb && ha) { const big = area(ha) > area(hb) ? ha : hb, sm = big === ha ? hb : ha;
+          if (!loopInside(sm.loop, big.loop)) throw new Error(`${part.name}: hole '${g}' steps are not nested at z ${z.toFixed(2)}`);
+          hz(z, big === ha, level(big, z).E, [level(sm, z).E]); }
+        else if (hb) hz(z, false, level(hb, z).E, []);   // blind hole ceiling (material above)
+        else hz(z, true, level(ha, z).E, []);            // blind hole floor (material below)
+      }
+    });
+    return A(`MANIFOLD_SOLID_BREP('${part.name}',${A(`CLOSED_SHELL('',(${faces.join(",")}))`)})`);
+  }
+  function file(name, solids) {
+    const ctx = A("APPLICATION_CONTEXT('automotive design')");
+    A(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,${ctx})`);
+    const prod = A(`PRODUCT('${name}','${name}','',(${A(`PRODUCT_CONTEXT('',${ctx},'mechanical')`)}))`);
+    const pd = A(`PRODUCT_DEFINITION('design','',${A(`PRODUCT_DEFINITION_FORMATION('','',${prod})`)},${A(`PRODUCT_DEFINITION_CONTEXT('part definition',${ctx},'design')`)})`);
+    const pds = A(`PRODUCT_DEFINITION_SHAPE('','',${pd})`);
+    const lu = A("(LENGTH_UNIT()NAMED_UNIT(*)SI_UNIT(.MILLI.,.METRE.))"), au = A("(NAMED_UNIT(*)PLANE_ANGLE_UNIT()SI_UNIT($,.RADIAN.))"), su = A("(NAMED_UNIT(*)SOLID_ANGLE_UNIT()SI_UNIT($,.STERADIAN.))");
+    const unc = A(`UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-05),${lu},'distance_accuracy_value','')`);
+    const gctx = A(`(GEOMETRIC_REPRESENTATION_CONTEXT(3)GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${unc}))GLOBAL_UNIT_ASSIGNED_CONTEXT((${lu},${au},${su}))REPRESENTATION_CONTEXT('',''))`);
+    const rep = A(`ADVANCED_BREP_SHAPE_REPRESENTATION('${name}',(${ax3(0, 0, 0, [0, 0, 1], [1, 0, 0])},${solids.join(",")}),${gctx})`);
+    A(`SHAPE_DEFINITION_REPRESENTATION(${pds},${rep})`);
+    return ["ISO-10303-21;", "HEADER;", `FILE_DESCRIPTION(('${name}'),'2;1');`, `FILE_NAME('${name}.step','${new Date().toISOString().slice(0, 19)}',(''),(''),'','Cycloidal Drive Designer','');`,
+      "FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));", "ENDSEC;", "DATA;", ...R, "ENDSEC;", "END-ISO-10303-21;"].join("\n");
+  }
+  return { solid, file };
+}
+function partSTEP(part) { // one part, in its own frame (bottom face at z = 0)
+  const W = StepWriter(), z0 = Math.min(...part.feats.map(f => f.z0)), s = W.solid(part, -(part.ox || 0), -(part.oy || 0), -z0);
+  return W.file(part.file, [s]);
+}
+function assemblySTEP(D, withBought) { // every body in its assembled position, one multi-body file
+  const W = StepWriter(), S = [];
+  for (const p of D.parts) if (p.kind !== "buy" || withBought) for (const inst of (p.inst || [{ dx: 0, dy: 0, dz: 0, name: p.name }])) S.push(W.solid({ ...p, name: inst.name || p.name }, inst.dx, inst.dy, inst.dz));
+  return W.file("CYCLOIDAL_DRIVE_ASSEMBLY", S);
+}
+
+/* ---- parts of the drive ---- */
+const MOTORS = { // flange pattern: square bolt spacing, clearance hole, screw-head counterbore Ø and depth, pilot boss hole
+  n14: { n: "NEMA 14", sq: 26, hole: 3.4, cb: 6.2, cbD: 3.2, pilot: 22.4 },
+  n17: { n: "NEMA 17", sq: 31, hole: 3.4, cb: 6.2, cbD: 3.2, pilot: 22.4 },
+  n23: { n: "NEMA 23", sq: 47.14, hole: 5.2, cb: 9.2, cbD: 5.2, pilot: 38.5 }
+};
+function driveParts(M, c) {
+  const p = M.p, errs = [], warns = [], parts = [], buy = [];
+  const C = LOOPS.circ, need = (cond, msg) => { if (!cond) errs.push(msg); };
+  if (M.errs.length) return { errs: ["The gearbox design itself is invalid — fix the messages in Status first."], warns, parts, buy };
+  if (p.mode !== "none") return { errs: ["STEP export builds the single-stage layout only (Pre-stage = None). Planetary/RV pre-stages are not modelled."], warns, parts, buy };
+  const lib = p.lib, get = i => lib[i] || null, ob = get(c.obSel), nd = p.dual ? 2 : 1, e = p.ecc, b = p.b;
+  const direct = c.cadIn !== "shaft", mot = MOTORS[c.cadIn], ib = direct ? null : get(c.ibSel), sb = direct ? null : get(c.sbSel);
+  if (!ob) return { errs: ["Pick an output bearing."], warns, parts, buy };
+  if (!direct && (!ib || !sb)) return { errs: ["Pick the input-shaft bearings."], warns, parts, buy };
+  const ha = c.holeAllow, ja = c.journalAllow, lig = p.lig, OD = p.housingOD, rk = p.rrp + c.pocketAllow / 2;
+  const abutO = B => B.D - 0.2 * (B.D - B.d), abutI = B => B.d + 0.2 * (B.D - B.d); // shoulder Ø that only touches the outer / inner ring
+  const Hs = 2 * c.axcl + nd * b + (nd - 1) * c.dg, nOb = c.obN, gOb = nOb > 1 ? c.obGap : 0;
+  let tb = c.tb;
+  if (!direct) tb = Math.max(tb, ib.B + 1.5); else tb = Math.max(tb, mot.cbD + 2);
+  if (tb > c.tb + 1e-9) warns.push(`Base plate thickened to ${tb.toFixed(1)} mm to fit the ${direct ? "motor screw counterbores" : "input bearing"}.`);
+  const zb1 = tb, zp1 = tb + Hs, zc1 = zp1 + c.tl, zh1 = zc1 + nOb * ob.B + (nOb - 1) * gOb, ztop = zh1 + c.tc;
+  const dA = abutI(ob), DA = abutO(ob), rLip = p.Rp - p.rrp / 2, seatR = (ob.D + ha) / 2;
+  // ---- checks ----
+  need(seatR > rLip + 0.8, `Output bearing ${ob.name} (OD ${ob.D}) is too small: its seat must be larger than the pin-retaining lip (Ø${(2 * rLip).toFixed(1)}). Use a bearing with OD ≥ ${(2 * rLip + 2).toFixed(0)} mm.`);
+  need(2 * rLip > ob.d + 0.45 * (ob.D - ob.d), `Pin-retaining lip Ø${(2 * rLip).toFixed(1)} would rub the output bearing's inner ring. Use a bearing with a larger bore, or a larger ring-pin circle.`);
+  need(rLip > dA / 2 + 0.75, `Carrier shoulder Ø${dA.toFixed(1)} does not clear the pin lip Ø${(2 * rLip).toFixed(1)}: output bearing bore too large for this pin circle.`);
+  const rOut = Math.max(p.Rp + rk, seatR), wall = OD / 2 - rOut, bR = (rOut + OD / 2) / 2, bHole = c.boltD / 2;
+  need(wall - 2 * bHole >= 2 * Math.min(lig, 1.2), `Housing wall ${wall.toFixed(1)} mm is too thin for Ø${c.boltD} bolts. Housing OD ≥ ${(2 * (rOut + 2 * bHole + 2.4)).toFixed(0)} mm.`);
+  if (2 * bR * Math.sin(Math.PI / c.boltN) < 2 * bHole + lig) errs.push("Housing bolts overlap each other: use fewer bolts.");
+  // bore between the pockets must clear the swept envelope of the wobbling discs
+  let rSwept = 0;
+  for (let k = 0; k < 180; k++) { const F = frame(M, k * 2); for (const d of F.discs) for (let i = 0; i < M.N; i += 4) { const [x, y] = profWorld(M, d, i); rSwept = Math.max(rSwept, Math.hypot(x, y)); } }
+  const Rb = Math.max(p.Rp, rSwept + c.boreClr), embed = p.Rp + rk - Rb;
+  need(embed > 0.3 * rk, `Disc lobes swing out to R ${rSwept.toFixed(2)} mm, so the housing bore must be Ø${(2 * Rb).toFixed(1)} and the ring pins would only sit ${Math.max(0, embed).toFixed(2)} mm deep in their pockets. Reduce eccentricity (K1) or use larger pins.`);
+  if (embed > 0.3 * rk && Rb > p.Rp + 1e-6 && embed < rk) warns.push(`Lobes reach R ${rSwept.toFixed(2)} mm: housing bore opened to Ø${(2 * Rb).toFixed(2)}, ring pins are only ${(100 * embed / (2 * rk)).toFixed(0)} % buried in their pockets (they are still trapped top and bottom).`);
+  need(Math.acos(Math.min(1, (p.Rp * p.Rp + Rb * Rb - rk * rk) / (2 * p.Rp * Rb))) < Math.PI / p.Zp * 0.95, "Ring-pin pockets overlap: pins too large for this pin count / circle.");
+  const outSeat = c.outSeat / 2, carR = (ob.d - ja) / 2;
+  need(p.Ro + outSeat + lig <= carR, `Output pin circle Ro ${p.Ro} too big for the carrier (fits inside the ${ob.name} bore Ø${ob.d}): need Ro ≤ ${(carR - outSeat - lig).toFixed(1)}.`);
+  const lobeR = (p.brgID - ja) / 2, shaftR = (p.shaftD + ha) / 2, collarR = lobeR - e - 0.3;
+  need(collarR - shaftR >= 1, `Eccentric cam is too thin around the Ø${p.shaftD} shaft (wall ${(collarR - shaftR).toFixed(2)} mm). Use an eccentric bearing with a larger bore, a smaller shaft, or less eccentricity.`);
+  let cenR; // carrier centre feature
+  if (!direct) {
+    need(zh1 - zp1 >= sb.B + 1, `Output carrier (${(zh1 - zp1).toFixed(1)} mm tall) is too short for the ${sb.name} support bearing.`);
+    cenR = (sb.D + ha) / 2; need(cenR + lig <= p.Ro - outSeat, `Support bearing ${sb.name} (OD ${sb.D}) hits the output pin holes: use a smaller bearing or larger Ro.`);
+    need(sb.d >= p.shaftD - 1e-6 && ib.d >= p.shaftD - 1e-6, `Input bearings must have bore ≥ shaft Ø${p.shaftD} (${ib.name}: ${ib.d}, ${sb.name}: ${sb.d}).`);
+    if (Math.abs(sb.d - p.shaftD) > 0.01 || Math.abs(ib.d - p.shaftD) > 0.01) warns.push("Input bearing bore ≠ shaft Ø: you'll need a stepped shaft or sleeve.");
+    need((ib.D + ha) / 2 < p.Rp - p.rrp - 1, "Input bearing too large for the base plate centre.");
+  } else {
+    cenR = (p.shaftD + 1) / 2;
+    const mR = mot.sq / Math.SQRT2;
+    if (mR + mot.cb / 2 > p.Rp - p.rrp - 0.5 && mR - mot.cb / 2 < p.Rp + rk) warns.push(`${mot.n} screw counterbores sit under the ring pins: pins could drop into them. Use the separate-shaft layout or a larger pin circle.`);
+    need(mot.pilot / 2 + 1 < mR - mot.hole / 2, "Motor pilot hole overlaps its screw holes.");
+  }
+  const wDa = DA / 2, wOD = dA / 2, washerIn = Math.max(cenR, p.Ro - (c.outSeat + 0.6) / 2 - 2);
+  need(wDa > wOD + 0.5, `Top cap opening Ø${DA.toFixed(1)} does not clear the clamp washer Ø${dA.toFixed(1)}.`);
+  need(washerIn > cenR - 1e-6 && p.Ro + (2 * p.rop + 0.4) / 2 + 1 < wOD, "Clamp washer too narrow for the output pin heads/holes: increase the output bearing size or reduce Ro.");
+  if (p.b < p.brgB) warns.push(`Eccentric bearing (${p.brgB} mm wide) is wider than the disc (${b} mm).`);
+  if (errs.length) return { errs, warns, parts, buy };
+
+  // ---- parts ----
+  const bolts = (z0, z1) => Array.from({ length: c.boltN }, (_, k) => ({ loop: C(bR * Math.cos((k + 0.5) / c.boltN * TAU), bR * Math.sin((k + 0.5) / c.boltN * TAU), bHole), z0, z1, hole: true, grp: "b" + k }));
+  const add = (o) => parts.push({ kind: "make", qty: 1, ...o });
+  // base plate
+  const baseF = [{ loop: C(0, 0, OD / 2), z0: 0, z1: tb }, ...bolts(0, tb)];
+  if (direct) {
+    baseF.push({ loop: C(0, 0, mot.pilot / 2), z0: 0, z1: tb, hole: true, grp: "c" });
+    for (let k = 0; k < 4; k++) { const a = (k + 0.5) * Math.PI / 2, r = mot.sq / Math.SQRT2, x = r * Math.cos(a), y = r * Math.sin(a);
+      baseF.push({ loop: C(x, y, mot.hole / 2), z0: 0, z1: tb - mot.cbD, hole: true, grp: "m" + k }, { loop: C(x, y, mot.cb / 2), z0: tb - mot.cbD, z1: tb, hole: true, grp: "m" + k }); }
+  } else baseF.push({ loop: C(0, 0, abutO(ib) / 2), z0: 0, z1: tb - ib.B, hole: true, grp: "c" }, { loop: C(0, 0, (ib.D + ha) / 2), z0: tb - ib.B, z1: tb, hole: true, grp: "c" });
+  add({ id: "base", name: "BASE_PLATE", file: "01_base_plate", label: "Base plate", how: "print / machine", feats: baseF,
+    desc: direct ? `Closes the bottom, holds the ring pins axially and mounts the ${mot.n} motor (pilot + counterbored screws).` : `Closes the bottom, holds the ring pins axially and carries the input bearing ${ib.name}.` });
+  // housing
+  add({ id: "housing", name: "HOUSING", file: "02_housing", label: "Housing (ring)", how: "print / machine", desc: `${p.Zp} half-pockets for the Ø${2 * p.rrp} pins, a lip that traps them, and the seat for ${nOb}× ${ob.name}.`,
+    feats: [{ loop: C(0, 0, OD / 2), z0: zb1, z1: zh1 }, ...bolts(zb1, zh1),
+      { loop: LOOPS.pocketBore(p.Rp, rk, p.Zp, Rb), z0: zb1, z1: zp1, hole: true, grp: "c" },
+      { loop: C(0, 0, rLip), z0: zp1, z1: zc1, hole: true, grp: "c" },
+      { loop: C(0, 0, seatR), z0: zc1, z1: zh1, hole: true, grp: "c" }] });
+  // top cap
+  add({ id: "cap", name: "TOP_CAP", file: "03_top_cap", label: "Top cap", how: "print / machine", desc: "Clamps the output bearing outer ring(s) and closes the housing.",
+    feats: [{ loop: C(0, 0, OD / 2), z0: zh1, z1: ztop }, ...bolts(zh1, ztop), { loop: C(0, 0, wDa), z0: zh1, z1: ztop, hole: true, grp: "c" }] });
+  // output carrier
+  const carF = [{ loop: C(0, 0, dA / 2), z0: zp1, z1: zc1 }, { loop: C(0, 0, carR), z0: zc1, z1: zh1 }];
+  for (let j = 0; j < p.Zo; j++) carF.push({ loop: C(p.Ro * Math.cos(j / p.Zo * TAU), p.Ro * Math.sin(j / p.Zo * TAU), outSeat), z0: zp1, z1: zh1, hole: true, grp: "o" + j });
+  if (!direct) carF.push({ loop: C(0, 0, cenR), z0: zp1, z1: zp1 + sb.B, hole: true, grp: "c" }, { loop: C(0, 0, abutO(sb) / 2), z0: zp1 + sb.B, z1: zh1, hole: true, grp: "c" });
+  else carF.push({ loop: C(0, 0, cenR), z0: zp1, z1: zh1, hole: true, grp: "c" });
+  add({ id: "carrier", name: "OUTPUT_CARRIER", file: "04_output_carrier", label: "Output carrier", how: "machine (best) / print",
+    desc: `The output: runs in the ${ob.name}, holds the ${p.Zo} output pins (Ø${c.outSeat} holes = tap/press)${direct ? "" : ` and the shaft support bearing ${sb.name}`}.`, feats: carF });
+  // clamp washer
+  const wF = [{ loop: C(0, 0, wOD), z0: zh1, z1: zh1 + c.tw }, { loop: C(0, 0, washerIn), z0: zh1, z1: zh1 + c.tw, hole: true, grp: "c" }];
+  for (let j = 0; j < p.Zo; j++) wF.push({ loop: C(p.Ro * Math.cos(j / p.Zo * TAU), p.Ro * Math.sin(j / p.Zo * TAU), (2 * p.rop + 0.4) / 2), z0: zh1, z1: zh1 + c.tw, hole: true, grp: "o" + j });
+  add({ id: "washer", name: "CLAMP_WASHER", file: "05_clamp_washer", label: "Clamp washer", how: "print / machine", desc: "Sits under the output pin heads and clamps the bearing inner ring(s) onto the carrier shoulder.", feats: wF });
+  // spacers between two output bearings
+  if (nOb > 1 && gOb > 0) {
+    const z0 = zc1 + ob.B, z1 = z0 + gOb;
+    add({ id: "spo", name: "OUTER_SPACER", file: "06_outer_spacer", label: "Outer bearing spacer", how: "print / machine", desc: "Keeps the two output bearings' outer rings apart (sets the bearing span = tilt stiffness).",
+      feats: [{ loop: C(0, 0, (ob.D - ja) / 2), z0, z1 }, { loop: C(0, 0, DA / 2), z0, z1, hole: true, grp: "c" }] });
+    add({ id: "spi", name: "INNER_SPACER", file: "07_inner_spacer", label: "Inner bearing spacer", how: "print / machine", desc: "Same height as the outer spacer, for the inner rings — both must match so the bearings aren't preloaded.",
+      feats: [{ loop: C(0, 0, dA / 2), z0, z1 }, { loop: C(0, 0, (ob.d + ha) / 2), z0, z1, hole: true, grp: "c" }] });
+  }
+  // cycloid discs (one part when Zd is odd and the hole count even)
+  const zd = k => tb + c.axcl + k * (b + c.dg), same = !p.dual || M.discNote.startsWith("Disc 2 = disc 1");
+  const discPart = k => ({ feats: [{ loop: LOOPS.poly(discOutline(M, k, c.facets)), z0: 0, z1: b },
+    ...M.holes.map((h, i) => ({ loop: C(h.x, h.y, i === 0 ? h.r + ha / 2 : h.r), z0: 0, z1: b, hole: true, grp: "h" + i }))] });
+  const d1 = discPart(0);
+  add({ id: "disc1", name: "CYCLOID_DISC" + (same ? "" : "_1"), file: "08_cycloid_disc" + (same ? "" : "_1"), label: same && nd > 1 ? "Cycloid disc (make 2)" : "Cycloid disc 1", qty: same ? nd : 1,
+    how: "print / machine", desc: `${M.Zd} lobes. Bore Ø${(p.brgOD + ha).toFixed(2)} for the ${p.brgName} eccentric bearing.${same && nd > 1 ? " Second disc = same part, flipped/rotated 180°." : ""}`,
+    feats: d1.feats, inst: [{ dx: e, dy: 0, dz: zd(0), name: "CYCLOID_DISC_1" }] });
+  if (nd > 1 && same) // disc 2 = disc 1 turned 180° (exact when Zd odd & even hole count); shown in the assembly only
+    parts.push({ kind: "asm", id: "disc2v", name: "CYCLOID_DISC_2", feats: discPart(1).feats, inst: [{ dx: -e, dy: 0, dz: zd(1), name: "CYCLOID_DISC_2" }] });
+  else if (nd > 1) add({ id: "disc2", name: "CYCLOID_DISC_2", file: "09_cycloid_disc_2", label: "Cycloid disc 2", how: "print / machine", desc: "Different part: profile indexed relative to its holes.",
+    feats: discPart(1).feats, inst: [{ dx: -e, dy: 0, dz: zd(1), name: "CYCLOID_DISC_2" }] });
+  // eccentric cam
+  const bore = c.dflat > 0 ? LOOPS.dflat(shaftR, shaftR - c.dflat) : C(0, 0, shaftR), cz0 = zd(0), cz1 = zd(nd - 1) + b;
+  const camF = [{ loop: C(e, 0, lobeR), z0: cz0, z1: cz0 + b }, { loop: bore, z0: cz0, z1: cz1, hole: true, grp: "c" }];
+  if (nd > 1) camF.push({ loop: C(0, 0, collarR), z0: cz0 + b, z1: zd(1) }, { loop: C(-e, 0, lobeR), z0: zd(1), z1: cz1 });
+  add({ id: "cam", name: "ECCENTRIC_CAM", file: "10_eccentric_cam", label: "Eccentric cam", how: "machine (best) / print",
+    desc: `Two lobes offset ±${e} mm, 180° apart. Fits the ${p.brgName} bore (Ø${(p.brgID - ja).toFixed(2)}), bore Ø${(2 * shaftR).toFixed(2)}${c.dflat > 0 ? " with D-flat" : ""} on the ${direct ? "motor" : "input"} shaft. Fix it with a grub screw / D-flat.`, feats: camF });
+  // bought parts (assembly only)
+  const ringZ1 = zp1 - 0.2, pinL = ringZ1 - zb1;
+  const cyl = (name, r, x, y, z0, z1, r0) => ({ kind: "buy", name, feats: [{ loop: C(0, 0, r), z0: 0, z1: z1 - z0 }].concat(r0 ? [{ loop: C(0, 0, r0), z0: 0, z1: z1 - z0, hole: true, grp: "c" }] : []), inst: [{ dx: x, dy: y, dz: z0, name }] });
+  const ring = cyl("RING_PIN", p.rrp, 0, 0, zb1, ringZ1); ring.inst = Array.from({ length: p.Zp }, (_, i) => ({ dx: p.Rp * Math.cos(i / p.Zp * TAU), dy: p.Rp * Math.sin(i / p.Zp * TAU), dz: zb1, name: "RING_PIN_" + (i + 1) }));
+  parts.push(ring);
+  const opZ0 = zb1 + c.axcl / 2, opZ1 = zh1 + c.tw, opL = opZ1 - opZ0;
+  const opin = cyl("OUTPUT_PIN", p.rop, 0, 0, opZ0, opZ1); opin.inst = Array.from({ length: p.Zo }, (_, j) => ({ dx: p.Ro * Math.cos(j / p.Zo * TAU), dy: p.Ro * Math.sin(j / p.Zo * TAU), dz: opZ0, name: "OUTPUT_PIN_" + (j + 1) }));
+  parts.push(opin);
+  const brg = (B, name, z0, x = 0) => cyl(name, B.D / 2, x, 0, z0, z0 + B.B, B.d / 2);
+  for (let k = 0; k < nd; k++) parts.push(brg({ d: p.brgID, D: p.brgOD, B: p.brgB }, "ECC_BEARING_" + (k + 1), zd(k) + (b - p.brgB) / 2, k ? -e : e));
+  for (let k = 0; k < nOb; k++) parts.push(brg(ob, "OUTPUT_BEARING_" + (k + 1), zc1 + k * (ob.B + gOb)));
+  let shaftL = 0;
+  if (!direct) {
+    parts.push(brg(ib, "INPUT_BEARING", tb - ib.B), brg(sb, "SUPPORT_BEARING", zp1));
+    const s0 = -c.shaftExt, s1 = zp1 + sb.B; shaftL = s1 - s0;
+    parts.push({ ...cyl("INPUT_SHAFT", p.shaftD / 2, 0, 0, s0, s1), kind: "buy" });
+  }
+  // bill of bought parts
+  const std = L => [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80].find(v => v >= L - 0.5) || Math.ceil(L);
+  buy.push([`${p.Zp}×`, `Ring pin Ø${2 * p.rrp} × ${pinL.toFixed(1)} mm`, "hardened dowel / needle roller, cut or ground to length"]);
+  buy.push([`${p.Zo}×`, `Output pin Ø${2 * p.rop}, ${opL.toFixed(1)} mm under the head`, `M${2 * p.rop}×${std(opL)} cap screw threads into the Ø${c.outSeat} carrier holes. Better: a Ø${2 * p.rop} shoulder bolt / dowel, so the disc holes ride on a smooth surface instead of threads`]);
+  buy.push([`${nd}×`, `Eccentric bearing ${p.brgName} (${p.brgID}×${p.brgOD}×${p.brgB})`, "pressed into the discs"]);
+  buy.push([`${nOb}×`, `Output bearing ${ob.name} (${ob.d}×${ob.D}×${ob.B})`, "in the housing seat"]);
+  if (!direct) { buy.push(["1×", `Input bearing ${ib.name} (${ib.d}×${ib.D}×${ib.B})`, "in the base plate"], ["1×", `Support bearing ${sb.name} (${sb.d}×${sb.D}×${sb.B})`, "in the carrier"],
+      ["1×", `Input shaft Ø${p.shaftD} × ${shaftL.toFixed(1)} mm`, `${c.shaftExt} mm sticks out below the base for the coupling`]); }
+  else buy.push(["", `${mot.n} motor shaft must reach ${(cz1).toFixed(1)} mm above its flange`, "the cam slides onto it"]);
+  const bL = ztop;
+  buy.push([`${c.boltN}×`, `Housing bolt (Ø${c.boltD} clearance) ≥ ${std(bL + 3)} mm`, "through top cap + housing + base, nut underneath (or tap the base)"]);
+  return { errs, warns, parts, buy, z: { tb, zp1, zc1, zh1, ztop, Hs }, info: { pinL, opL, shaftL, height: ztop, bR } };
+}
+/* minimal store-only ZIP (no compression) */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function makeZip(files) { // files: [{name, text}] → Uint8Array
+  const enc = new TextEncoder(), chunks = [], cen = []; let off = 0;
+  const u16 = v => [v & 255, (v >>> 8) & 255], u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  for (const f of files) {
+    const data = enc.encode(f.text), nm = enc.encode(f.name); let crc = 0xffffffff;
+    for (let i = 0; i < data.length; i++) crc = CRC_T[(crc ^ data[i]) & 255] ^ (crc >>> 8); crc = (crc ^ 0xffffffff) >>> 0;
+    const head = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+    chunks.push(new Uint8Array(head), nm, data);
+    cen.push([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)], nm);
+    off += head.length + nm.length + data.length;
+  }
+  let csz = 0; const cparts = cen.map(x => x instanceof Uint8Array ? x : new Uint8Array(x)); cparts.forEach(x => csz += x.length);
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(csz), ...u32(off), ...u16(0)]);
+  const all = [...chunks, ...cparts, end]; let n = 0; all.forEach(x => n += x.length);
+  const out = new Uint8Array(n); let o = 0; for (const x of all) { out.set(x, o); o += x.length; } return out;
+}
+
+//CORE-END
+
+</script>
+<script>
+"use strict";
+const MOD = { none: "None (single-stage cycloidal)", planet: "Planetary in series (sun in, ring fixed)", rv: "RV: spur gears on crankshafts" };
+const MATOPT = Object.entries(MAT).map(([k, m]) => [k, m.n]);
+const PRESETS = { // typical datasheet values — replace with your motor's sheet
+  custom: ["Custom (type your motor's values)"],
+  s17_40: ["NEMA17 17HS4401-class: 0.40 N·m, 1.7 A, 2.8 mH", 0.40, 1.7, 2.8],
+  s17_59: ["NEMA17 17HS19-2004S1-class: 0.59 N·m, 2.0 A, 3.0 mH", 0.59, 2.0, 3.0],
+  s14_20: ["NEMA14 ~0.20 N·m, 1.0 A, 5 mH (example)", 0.20, 1.0, 5.0],
+  s23_126: ["NEMA23 ~1.26 N·m, 2.8 A, 3.6 mH (example)", 1.26, 2.8, 3.6]
+};
+/* Typical catalogue values for open deep-groove ball bearings — verify against your supplier's datasheet. */
+const BRG_DEFAULT = [
+  ["625", 5, 16, 5, 1.14, 0.38, 45000], ["626", 6, 19, 6, 2.34, 0.95, 40000], ["688", 8, 16, 5, 1.61, 0.71, 40000], ["608", 8, 22, 7, 3.45, 1.37, 34000],
+  ["61800 (6800)", 10, 19, 5, 1.38, 0.585, 38000], ["61900 (6900)", 10, 22, 6, 2.7, 1.27, 32000], ["6000", 10, 26, 8, 4.75, 1.96, 30000],
+  ["61801 (6801)", 12, 21, 5, 1.43, 0.67, 32000], ["61901 (6901)", 12, 24, 6, 2.91, 1.46, 30000], ["61802 (6802)", 15, 24, 5, 1.56, 0.8, 28000],
+  ["61803 (6803)", 17, 26, 5, 1.68, 0.93, 24000], ["61804 (6804)", 20, 32, 7, 4.03, 2.32, 20000],
+  ["605", 5, 14, 5, 1.33, 0.5, 45000], ["6001", 12, 28, 8, 5.4, 2.36, 40000], ["61702 (6702)", 15, 21, 4, 0.94, 0.5, 30000],
+  ["61805 (6805)", 25, 37, 7, 4.36, 2.6, 18000], ["61807 (6807)", 35, 47, 7, 4.94, 3.4, 15000], ["61812 (6812)", 60, 78, 10, 11.9, 11.4, 9000],
+  ["HK0508 needle", 5, 9, 8, 1.6, 1.05, 25000]
+].map(([name, d, D, B, C, C0, nlim]) => ({ use: true, name, d, D, B, C, C0, nlim, type: name.includes("needle") ? "roller" : "ball" }));
+const LIBKEY = "cyclo.brglib.v1";
+let LIB = (() => { try { const v = JSON.parse(localStorage.getItem(LIBKEY)); if (Array.isArray(v) && v.length) { for (const b of BRG_DEFAULT) if (!v.some(x => x.name === b.name)) v.push({ ...b }); return v; } } catch (e) {} return BRG_DEFAULT.map(b => ({ ...b })); })();
+const libIdx = name => Math.max(0, LIB.findIndex(b => b.name === name || b.name.includes("(" + name + ")") || b.name.startsWith(name + " ")));
+const saveLib = () => { try { localStorage.setItem(LIBKEY, JSON.stringify(LIB)); } catch (e) {} };
+
+const SCHEMA = [
+  ["Drive layout", "How the gearbox is put together.", [
+    { id: "mode", l: "Pre-stage", t: "sel", o: Object.entries(MOD), v: "none", wide: 1, h: "An optional gear stage in front of the cycloid to multiply the ratio. 'None' = the input shaft turns the eccentric cam directly. This is the simplest layout and the only one the STEP export builds." },
+    { id: "dual", l: "Two discs, 180° phase", t: "chk", v: true, h: "Two discs offset by half a turn cancel each other's wobble (no vibration) and share the torque. Turn off only for very small, slow drives." },
+    { id: "Ns", l: "Sun teeth Ns", v: 12, s: 1, w: "mode=planet", h: "Teeth on the sun gear (on the motor shaft) of the planetary pre-stage." }, { id: "Nr", l: "Ring teeth Nr", v: 48, s: 1, w: "mode=planet", h: "Teeth on the fixed internal ring gear. Pre-stage ratio = 1 + Nr/Ns." },
+    { id: "Nplan", l: "Planets", v: 3, s: 1, w: "mode=planet", h: "Number of planet gears. (Ns+Nr)/planets must be a whole number or it won't assemble." },
+    { id: "Z1", l: "Input gear Z1", v: 12, s: 1, w: "mode=rv", h: "Teeth on the input (motor) spur gear of the RV layout." }, { id: "Z2", l: "Crank gear Z2", v: 36, s: 1, w: "mode=rv", h: "Teeth on each crankshaft gear. Larger Z2/Z1 = higher ratio." },
+    { id: "Ncrank", l: "Crankshafts", v: 2, s: 1, w: "mode=rv", h: "Number of eccentric crankshafts driving the discs (RV style, 2 or 3)." },
+    { id: "effPre", l: "Pre-stage efficiency", v: 0.97, s: 0.01, w: "mode=planet|rv", adv: 1, h: "Power that survives the pre-stage. 0.95–0.98 for spur/planetary gears." }]],
+  ["Motor & operating point", "What drives it and what the output must do. Sets the torque used for every strength check.", [
+    { id: "useMotor", l: "Use motor torque–speed data", t: "chk", v: true, h: "On: the tool reads your motor's torque curve, finds what torque is actually available at your speed and recommends a ratio. Off: you just type the output torque." },
+    { id: "nIn", l: "Motor speed, rpm", t: "range", v: 300, min: 0, max: 2400, step: 1, h: "Speed of the input shaft. Output speed = this ÷ ratio. Also sets bearing life and (for steppers) how much torque the motor still has." },
+    { id: "mType", l: "What do you know about the motor?", t: "sel", o: [["stepper", "Stepper datasheet (holding torque, current, inductance)"], ["kv", "BLDC / gimbal motor (Kv, voltage, current, resistance)"], ["linear", "DC motor (stall torque, no-load speed)"], ["table", "Measured / datasheet curve points"]], v: "stepper", wide: 1, w: "useMotor=1", h: "Pick what your datasheet gives you; the tool builds a torque-vs-speed curve from it." },
+    { id: "preset", l: "Stepper preset", t: "sel", o: Object.entries(PRESETS).map(([k, v]) => [k, v[0]]), v: "s17_59", wide: 1, w: "useMotor=1&mType=stepper", h: "Fills in typical values for common steppers. Replace with your motor's own sheet if you have it." },
+    { id: "sHold", l: "Holding torque, N·m", v: 0.59, s: 0.01, w: "useMotor=1&mType=stepper", h: "Datasheet 'holding torque' (both phases energised, motor stopped)." },
+    { id: "sI", l: "Rated current per phase, A", v: 2.0, s: 0.1, w: "useMotor=1&mType=stepper", h: "Set the driver to this current." },
+    { id: "sL", l: "Phase inductance, mH", v: 3.0, s: 0.1, w: "useMotor=1&mType=stepper", h: "Datasheet inductance. Higher inductance = torque drops off at lower speed." },
+    { id: "sV", l: "Driver supply voltage, V", v: 24, s: 1, w: "useMotor=1&mType=stepper", h: "Higher voltage pushes the corner speed (where torque starts falling) up proportionally." },
+    { id: "sStep", l: "Step angle", t: "sel", o: [["1.8", "1.8° (200 steps/rev)"], ["0.9", "0.9° (400 steps/rev)"]], v: "1.8", wide: 1, w: "useMotor=1&mType=stepper", adv: 1, h: "From the motor label. Almost all NEMA steppers are 1.8°." },
+    { id: "sPull", l: "Low-speed torque ÷ holding torque", v: 0.8, s: 0.05, w: "useMotor=1&mType=stepper", adv: 1, h: "Usable (pull-out) torque at low speed is below holding torque; 0.7–0.9 is typical, lower with heavy microstepping." },
+    { id: "Kv", l: "Kv, rpm/V", v: 100, s: 1, w: "useMotor=1&mType=kv", h: "From the motor label/datasheet (e.g. 6010-110KV → 110)." },
+    { id: "kV", l: "Supply voltage, V", v: 24, s: 1, w: "useMotor=1&mType=kv", h: "Driver/battery voltage. With Kv it sets the no-load speed." },
+    { id: "kI", l: "Max current (driver limit), A", v: 5, s: 0.5, w: "useMotor=1&mType=kv", h: "Torque = Kt × current, Kt = 9.55/Kv N·m/A. This caps the torque." },
+    { id: "kR", l: "Winding resistance (phase-phase), Ω", v: 1.0, s: 0.05, w: "useMotor=1&mType=kv", h: "Measure across two motor wires with a multimeter. Sets how fast torque drops with speed." },
+    { id: "Tstall", l: "Stall torque, N·m", v: 0.5, s: 0.01, w: "useMotor=1&mType=linear", h: "Torque at zero speed (motor held still) from the datasheet." }, { id: "n0", l: "No-load speed, rpm", v: 3000, s: 50, w: "useMotor=1&mType=linear", h: "Free-running speed with nothing attached." },
+    { id: "Tcap", l: "Current-limit torque cap, N·m (0 = none)", v: 0, s: 0.01, w: "useMotor=1&mType=linear", adv: 1, h: "If your driver limits current, torque can't exceed this." },
+    { id: "curve", t: "hidden", v: "0:0.55,300:0.52,600:0.50,900:0.40,1200:0.30" },
+    { id: "Tout", l: "Required load torque at output, N·m", v: 1.5, s: 0.1, h: "Torque the output must hold or drive (e.g. the arm joint's worst case). Every safety factor is checked against this, or against the motor torque, see 'Strength-check torque'." },
+    { id: "nOutReq", l: "Required output speed, rpm (0 = fastest)", v: 15, s: 1, w: "useMotor=1", h: "What the joint must turn at. 0 = let the tool find the fastest speed that still holds the load." },
+    { id: "reserve", l: "Motor torque reserve (×)", v: 1.5, s: 0.1, w: "useMotor=1", adv: 1, h: "How much stronger than the load the motor must be at the operating speed. 1.5 = 50 % spare torque, so it doesn't skip steps." },
+    { id: "basis", l: "Strength-check torque", t: "sel", o: [["slider", "Motor max torque at this speed (worst case)"], ["peak", "Motor peak torque (jam / stall)"], ["load", "Required load torque only"]], v: "load", wide: 1, w: "useMotor=1", h: "Which torque the gearbox parts must survive. 'Motor max' = the motor can always push this hard (e.g. jammed joint). 'Load only' is fine if the driver limits current." }]],
+  ["Cycloidal stage", "The reduction itself: fixed ring pins, wobbling lobed discs and the output pins that take the rotation out.", [
+    { id: "Zp", l: "Ring pins Zp (lobes = Zp−1)", v: 26, s: 1, h: "Number of fixed pins around the housing. Ratio = Zp − 1 (26 pins → 25:1). More pins = smoother and lower force per pin, but smaller lobes." },
+    { id: "Rp", l: "Ring pin pitch radius Rp", v: 37.5, s: 0.1, h: "Radius of the circle the ring-pin centres sit on (pin circle Ø ÷ 2). Bigger circle = more torque capacity but a bigger housing." },
+    { id: "rrp", l: "Ring pin radius", v: 2.25, s: 0.05, h: "Ring pin Ø ÷ 2. These hardened pins are what the disc lobes roll against: they carry all the torque reaction into the housing." },
+    { id: "ecc", l: "Eccentricity e", v: 1.0, s: 0.01, h: "How far the cam is offset. Sets lobe depth; keep K1 = e·Zp/Rp around 0.45–0.85. Too small = shallow lobes that skip; too big = sharp lobes that undercut." },
+    { id: "dr", l: "Profile clearance Δr", v: 0.05, s: 0.005, h: "Gap between disc and pins so it doesn't jam. Machined: 0.01–0.03 mm. FDM print: 0.05–0.15 mm. Bigger gap = more backlash." },
+    { id: "b", l: "Disc thickness", v: 8, s: 0.5, h: "Thickness of each disc. Contact stress ∝ 1/√b, so thicker = stronger. The eccentric bearing must fit inside it." },
+    { id: "Zo", l: "Output pins", v: 6, s: 1, w: "mode=none|planet", h: "Pins (your M5 screws) that pass through the disc holes and turn the output carrier. They pick up the slow rotation and carry all the output torque." },
+    { id: "Ro", l: "Hole / crank pitch radius Ro", v: 24, s: 0.1, h: "Radius of the circle the output pins sit on. Larger = less force per pin, but less material between holes and disc edge." },
+    { id: "rop", l: "Output pin radius", v: 2.5, s: 0.05, w: "mode=none|planet", h: "Output pin Ø ÷ 2 (M5 → 2.5). The disc holes are made pin Ø + 2e + clearance so the disc can wobble around them." },
+    { id: "tol", l: "Output hole clearance", v: 0.1, s: 0.005, w: "mode=none|planet", adv: 1, h: "Extra radius on the output holes beyond pin radius + e. More = easier assembly, more backlash." }]],
+  ["Housing & shaft", "The stationary body and the input shaft that spins the cam.", [
+    { id: "housingOD", l: "Housing OD", v: 100, s: 0.5, h: "Outside diameter of the housing. Must fit the ring pins, the output bearing and the housing bolts with enough wall." },
+    { id: "wallMin", l: "Min wall behind pins", v: 3, s: 0.5, adv: 1, h: "Minimum material outside the ring pins. Thin walls crack or let pins push out." },
+    { id: "shaftD", l: "Input shaft Ø", v: 8, s: 0.5, h: "Shaft that turns the eccentric cam: your own shaft, or the motor shaft when the cam sits directly on the motor. Sets the cam bore." },
+    { id: "lig", l: "Min ligament / web", v: 2, s: 0.1, adv: 1, h: "Thinnest material allowed between holes, or between a hole and an edge. Below ~1.5 mm printed parts get weak." },
+    { id: "integralEcc", l: "Eccentric machined on shaft (no sleeve cam)", t: "chk", v: false, w: "mode=none|planet", adv: 1, h: "If the eccentric is machined into the shaft itself, the cam doesn't need to fit over the shaft. The STEP export still models a separate cam." }]],
+  ["Bearings", "Pick from the library (your bearings are in it). The eccentric bearing is usually the part that wears out first.", [
+    { id: "useBrg", l: "Bearings available (pick from library)", t: "chk", v: true, h: "On: pick real bearings and get life/static checks. Off: give an envelope and the tool tells you what C/C0 you need." },
+    { id: "brgSel", l: "Eccentric / crank bearing", t: "sel", o: [], v: "10", wide: 1, w: "useBrg=1", h: "Bearing pressed into each disc, riding on the eccentric cam. It carries the full disc reaction force at input speed, so it is usually the life-limiting part." },
+    { id: "brgID", l: "Bore envelope: bearing ID", v: 8, s: 0.5, w: "useBrg=0", h: "Bore of the bearing you plan to use (sets the cam size)." }, { id: "brgOD", l: "Bore envelope: bearing OD", v: 16, s: 0.5, w: "useBrg=0", h: "Outside Ø of the bearing (sets the disc centre hole)." },
+    { id: "brgB", l: "Bore envelope: width", v: 5, s: 0.5, w: "useBrg=0", h: "Width of the bearing (must be ≤ disc thickness)." },
+    { id: "brgType", l: "Planned bearing type", t: "sel", o: [["ball", "Ball (p=3)"], ["roller", "Needle/roller (p=10/3)"]], v: "ball", wide: 1, w: "useBrg=0", h: "Changes the life exponent." },
+    { id: "Lreq", l: "Required life L10h", v: 2000, s: 100, adv: 1, h: "Hours the eccentric bearing must survive with 90 % reliability (L10)." }, { id: "s0min", l: "Min static safety s0", v: 1, s: 0.1, adv: 1, h: "Static safety C0 / peak load. 1 is normal; use 2 for shock loads." }]],
+  ["Load share & materials", "", [
+    { id: "share", l: "Load share per disc (dual)", v: 0.55, s: 0.01, adv: 1, h: "With two discs, each carries a bit more than half because of manufacturing error. 0.55 is a common assumption." },
+    { id: "effCyc", l: "Cycloidal efficiency", v: 0.9, s: 0.01, adv: 1, h: "Fraction of power that comes out. 0.85–0.95 with rolling pins, lower with sliding plastic." },
+    { id: "matD", l: "Disc material", t: "sel", o: MATOPT, v: "petg", wide: 1, h: "What the discs are made of. For printed discs this, not the steel pins, limits the torque (contact stress on the lobes)." },
+    { id: "matP", l: "Pin material", t: "sel", o: MATOPT, v: "s52100", wide: 1, h: "Ring and output pin material. Hardened steel dowels = 52100." }]],
+  ["Drive CAD (STEP export)", "How the drive is built into real parts. The 'Drive CAD' panel on the right downloads a STEP file for every part, with seats for the bearings below.", [
+    { id: "cadIn", l: "Input", t: "sel", o: [["shaft", "Own input shaft on 2 bearings (couple to the motor)"], ["n17", "Cam straight on a NEMA 17 motor shaft"], ["n14", "Cam straight on a NEMA 14 motor shaft"], ["n23", "Cam straight on a NEMA 23 motor shaft"]], v: "shaft", wide: 1, h: "Own shaft: an input shaft held by a bearing in the base and one in the output carrier. Stiff and the motor shaft sees no side load. Straight on motor: no extra parts, but the motor's own bearings take the cam load, OK for small drives." },
+    { id: "obSel", l: "Output bearing", t: "sel", o: [], v: "", wide: 1, h: "Big thin bearing (e.g. 6812) that the output carrier turns in. It holds the output and takes any load you hang on it." },
+    { id: "obN", l: "Output bearings", t: "sel", o: [["2", "2 (stiff against tilting)"], ["1", "1"]], v: "2", wide: 1, h: "Two bearings spaced apart resist tilting loads (an arm hanging off the output). One bearing alone wobbles." },
+    { id: "obGap", l: "Gap between output bearings, mm", v: 4, s: 0.5, w: "obN=2", h: "Spacer height between the two output bearings. A bigger span = stiffer against tilt, but a taller drive. 0 = bearings touching, no spacers." },
+    { id: "ibSel", l: "Input bearing (in base plate)", t: "sel", o: [], v: "", wide: 1, w: "cadIn=shaft", h: "Holds the input shaft at the motor end." },
+    { id: "sbSel", l: "Shaft support bearing (in carrier)", t: "sel", o: [], v: "", wide: 1, w: "cadIn=shaft", h: "Holds the far end of the input shaft inside the output carrier, so the cam doesn't flex." },
+    { id: "shaftExt", l: "Shaft stick-out below base, mm", v: 15, s: 1, w: "cadIn=shaft", h: "How much input shaft sticks out under the base plate for the motor coupling." },
+    { id: "dflat", l: "D-flat depth on cam bore, mm (0 = round)", v: 0, s: 0.1, h: "Makes the cam bore D-shaped to match a D-cut shaft (NEMA shafts: 0.5). The flat drives the cam, so it doesn't slip." },
+    { id: "outSeat", l: "Output pin hole Ø in carrier", v: 4.2, s: 0.1, h: "Hole for the output pins in the carrier. 4.2 = M5 tap drill (screws thread in). Use pin Ø − 0.05 for a press-fit dowel, or pin Ø + 0.3 with nuts." },
+    { id: "boltN", l: "Housing bolts", v: 6, s: 1, h: "Bolts that clamp top cap, housing and base together. They go through the wall outside the pins and the bearing." },
+    { id: "boltD", l: "Housing bolt hole Ø", v: 3.4, s: 0.1, h: "Clearance hole: 3.4 for M3, 4.5 for M4." },
+    { id: "fit", l: "Made by", t: "sel", o: [["fdm", "FDM print (adds hole allowances)"], ["mach", "Machined (nominal sizes, apply H7/k6 on drawing)"], ["custom", "Custom allowances"]], v: "fdm", wide: 1, h: "Printed holes come out small, so the tool opens bearing seats and bores a little. Machined: exact nominal sizes, let the machinist apply fits." },
+    { id: "holeAllow", l: "Hole allowance (Ø), mm", v: 0.15, s: 0.01, adv: 1, h: "Added to the Ø of every bearing seat and shaft bore." },
+    { id: "journalAllow", l: "Journal allowance (Ø), mm", v: 0.05, s: 0.01, adv: 1, h: "Subtracted from the Ø of everything that goes INTO a bearing (cam lobes, carrier)." },
+    { id: "pocketAllow", l: "Ring-pin pocket allowance (Ø), mm", v: 0.1, s: 0.01, adv: 1, h: "Added to the ring-pin pocket Ø so the hardened pins drop in." },
+    { id: "boreClr", l: "Disc-to-housing bore clearance, mm", v: 0.25, s: 0.1, adv: 1, h: "Radial gap between the wobbling disc lobes and the housing bore between the pins. The tool sweeps the real disc motion to find how far the lobes reach." },
+    { id: "tb", l: "Base plate thickness, mm", v: 6, s: 0.5, adv: 1, h: "Minimum base thickness. It grows automatically to fit the input bearing or motor screw heads." },
+    { id: "tl", l: "Pin-retaining lip height, mm", v: 2, s: 0.5, adv: 1, h: "Ledge in the housing above the ring pins: it stops the pins sliding up and is the seat the output bearing sits on." },
+    { id: "tc", l: "Top cap thickness, mm", v: 3, s: 0.5, adv: 1, h: "Cap that clamps the output bearing outer rings." },
+    { id: "tw", l: "Clamp washer thickness, mm", v: 3, s: 0.5, adv: 1, h: "Washer under the output-pin heads that clamps the bearing inner rings onto the carrier." },
+    { id: "axcl", l: "Axial clearance at each disc face, mm", v: 0.5, s: 0.1, adv: 1, h: "Gap between the discs and the base/carrier so they don't rub. Also sets the output-pin bending lever." },
+    { id: "dg", l: "Gap between the two discs, mm", v: 1, s: 0.1, adv: 1, h: "Gap between disc 1 and disc 2 (the cam has a collar here)." },
+    { id: "facets", l: "Disc profile points in STEP", v: 1440, s: 120, adv: 1, h: "The lobe curve is written as this many flat facets. 1440 is far finer than any printer or end mill (<0.003 mm error)." },
+    { id: "withBought", l: "Put bearings & pins in the assembly STEP", t: "chk", v: true, h: "Adds simple bodies for the bearings, ring pins, output pins and shaft so you can check the assembly in CAD." }]],
+  ["Motion", "", [{ id: "phi", l: "Crank angle, °", t: "range", v: 30, min: 0, max: 359, step: 1, h: "Turns the cam in the left drawing so you can see how the discs move and which pins are loaded." },
+    { id: "sweepN", l: "Sweep samples / 360°", v: 360, s: 30, adv: 1, h: "How many cam angles are checked per turn. More = slower but catches every peak." }]],
+  ["Optimizer targets", "What the optimizer is allowed to change and what it aims for.", [
+    { id: "ratioSrc", l: "Ratio from", t: "sel", o: [["motor", "Motor data + load (needs motor model)"], ["manual", "Manual target ratio"]], v: "motor", wide: 1, h: "Motor: pick the ratio that lets your motor reach the required speed with the reserve. Manual: you type the ratio." },
+    { id: "target", l: "Target total ratio", v: 25, s: 1, w: "ratioSrc=manual", h: "The ratio you want; only pin counts within the tolerance are tried." }, { id: "ratioTol", l: "Ratio tolerance, %", v: 3, s: 0.5, w: "ratioSrc=manual", adv: 1, h: "How far from the target ratio is acceptable." },
+    { id: "lockRing", l: "Keep my ring pins (Ø and pitch circle)", t: "chk", v: true, h: "On: only uses your ring-pin Ø and pin circle (what you already bought). Off: the optimizer may choose pin size and circle from the list below." },
+    { id: "lockOut", l: "Keep my output pin Ø", t: "chk", v: true, h: "On: output pins stay the Ø above (your M5). Off: chosen from the list below." },
+    { id: "sizes", l: "Available pin Ø list, mm", t: "text", v: "2, 2.5, 3, 4, 4.5, 5, 6, 8", wide: 1, h: "Pin sizes you could buy, used for anything not locked above." },
+    { id: "objective", l: "Optimize for", t: "sel", o: Object.entries(OBJ).map(([k, v]) => [k, v.n]), v: "strong", wide: 1, h: "What 'best' means once the safety target is met." },
+    { id: "targetSF", l: "Target safety factor", v: 1.5, s: 0.1, h: "Every check (contact, bending, bearing, motor) must reach this. 1.5 is a sensible default; 2+ for shock loads." },
+    { id: "optBs", l: "Allowed disc thickness, mm (list)", t: "text", v: "6, 8, 10, 12", wide: 1, h: "Disc thicknesses the optimizer may use." },
+    { id: "odMin", l: "Housing OD from, mm", v: 100, s: 1, h: "Smallest housing diameter to try." }, { id: "odMax", l: "Housing OD to, mm", v: 100, s: 1, h: "Largest housing diameter to try. Same as 'from' = fixed size." }, { id: "odStep", l: "Housing OD step, mm", v: 5, s: 1, adv: 1, h: "Step between tried diameters." },
+    { id: "autoOpt", l: "Re-run optimizer when motor speed slider is released", t: "chk", v: false, adv: 1, h: "Convenience: runs the optimizer every time you change the motor speed." }]]
+];
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ALLROWS = SCHEMA.flatMap(s => s[2]);
+function buildForm() {
+  let adv = false; try { adv = localStorage.getItem("cyclo.adv") === "1"; } catch (e) {}
+  let h = `<div class="row chk"><input type="checkbox" id="advTgl" ${adv ? "checked" : ""}><span class="lq"><label for="advTgl">Show advanced settings</label><button type="button" class="q" data-q="advTgl" aria-expanded="false" aria-label="What does this do?">?</button></span></div><div class="qa" id="qa-advTgl" hidden>Basic view hides fine-tuning values that already have good defaults. Every "?" explains what that setting controls.</div>`;
+  document.body.classList.toggle("basic", !adv);
+  for (const [title, desc, rows] of SCHEMA) {
+    h += `<details ${["Load share & materials", "Motion"].includes(title) ? "" : "open"}><summary>${title}</summary>${desc ? `<div class="sdesc">${desc}</div>` : ""}`;
+    for (const r of rows) {
+      if (r.t === "hidden") { h += `<input type="hidden" id="${r.id}" value="${r.v}">`; continue; }
+      const at = (r.w ? ` data-w="${r.w}"` : "") + (r.adv ? " data-adv" : "");
+      const q = r.h ? `<button type="button" class="q" data-q="${r.id}" aria-expanded="false" aria-label="What does ${r.l.replace(/"/g, "")} do?">?</button>` : "";
+      const lab = t => `<span class="lq"><label for="${r.id}">${t}</label>${q}</span>`;
+      let row;
+      if (r.t === "chk") row = `<div class="row chk"><input type="checkbox" id="${r.id}" ${r.v ? "checked" : ""}>${lab(r.l)}</div>`;
+      else if (r.t === "sel") row = `<div class="row${r.wide ? " wide" : ""}">${lab(r.l)}<select id="${r.id}">${r.o.map(([k, n]) => `<option value="${k}" ${k === r.v ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
+      else if (r.t === "range") row = `<div class="row wide">${lab(`${r.l}: <b id="${r.id}V">${r.v}</b>`)}<input type="range" id="${r.id}" min="${r.min}" max="${r.max}" step="${r.step}" value="${r.v}"></div>`;
+      else if (r.t === "text") row = `<div class="row wide">${lab(r.l)}<input id="${r.id}" value="${r.v}"></div>`;
+      else row = `<div class="row">${lab(r.l)}<input type="number" id="${r.id}" value="${r.v}" step="${r.s}"></div>`;
+      h += `<div class="fld"${at}>${row}${r.h ? `<div class="qa" id="qa-${r.id}" hidden>${r.h}</div>` : ""}</div>`;
+    }
+    if (title === "Motor & operating point") h += `<div data-w="useMotor=1"><div data-w="mType=table"><div class="hint" style="margin:6px 0">Each point = the most torque the motor can give at that speed. Straight lines join the points. Above the last point the motor gives nothing, so the speed slider stops there. 3–6 points are enough; take them off the datasheet graph or measure.</div><div class="tblwrap"><table class="lib" id="ptTbl"></table></div><div class="btns"><button id="ptAdd">Add point</button></div></div><canvas id="mC" style="width:100%;height:150px;display:block"></canvas><div id="mInfo" class="hint"></div><div class="btns" data-w="mType=stepper|kv|linear"><button id="toPts">Edit this curve as points</button></div></div>`;
+    if (title === "Optimizer targets") h += `<div class="row wide"><label>Allowed disc materials</label><div class="chips">${Object.entries(MAT).map(([k, m]) => `<label><input type="checkbox" data-om="${k}" ${["pom", "pa12", "petg"].includes(k) ? "checked" : ""}> ${m.n.split(" (")[0]}</label>`).join("")}</div></div>`;
+    if (title === "Bearings") h += `<div id="libBox" data-w="useBrg=1" data-adv><div class="hint" style="margin:6px 0">Library (typical catalogue values, verify against your supplier). Ticked rows are offered to the optimizer as the eccentric bearing; every row can be picked for the drive CAD.</div><div class="tblwrap"><table class="lib" id="libTbl"></table></div><div class="btns"><button id="libAdd">Add bearing</button><button id="libReset">Reset library</button></div></div>`;
+    h += "</details>";
+  }
+  $("form").innerHTML = h;
+}
+function fieldVal(id) { const el = $(id); return el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value; }
+function applyVisibility() {
+  document.querySelectorAll("[data-w]").forEach(r => {
+    r.hidden = !r.dataset.w.split("&").every(c => { const [k, v] = c.split("="); return v.split("|").includes(fieldVal(k)); });
+  });
+}
+function renderLib() {
+  for (const id of ["brgSel", "obSel", "ibSel", "sbSel"]) { const sel = $(id), cur = sel.value;
+    sel.innerHTML = LIB.map((b, i) => `<option value="${i}">${b.name}  ${b.d}×${b.D}×${b.B}  C ${b.C} kN</option>`).join("");
+    sel.value = LIB[cur] ? cur : "0"; }
+  const cell = (i, k, v, w) => `<td><input data-i="${i}" data-k="${k}" value="${v}" style="width:${w}px"></td>`;
+  $("libTbl").innerHTML = `<thead><tr><th>use</th><th>name</th><th>d</th><th>D</th><th>B</th><th>C kN</th><th>C0 kN</th><th>n lim</th><th>type</th><th></th></tr></thead><tbody>` +
+    LIB.map((b, i) => `<tr><td><input type="checkbox" data-i="${i}" data-k="use" ${b.use ? "checked" : ""}></td>${cell(i, "name", b.name, 72)}${cell(i, "d", b.d, 34)}${cell(i, "D", b.D, 34)}${cell(i, "B", b.B, 30)}${cell(i, "C", b.C, 40)}${cell(i, "C0", b.C0, 40)}${cell(i, "nlim", b.nlim, 52)}<td><select data-i="${i}" data-k="type"><option value="ball" ${b.type === "ball" ? "selected" : ""}>ball</option><option value="roller" ${b.type === "roller" ? "selected" : ""}>roller</option></select></td><td><button data-del="${i}" aria-label="Delete ${b.name}">×</button></td></tr>`).join("") + "</tbody>";
+}
+function readP() {
+  const p = {};
+  for (const r of ALLROWS) { const el = $(r.id); p[r.id] = r.t === "chk" ? el.checked : (r.t === "sel" || r.t === "text" || r.t === "hidden") ? el.value : +el.value; }
+  p.sStep = +p.sStep;
+  p.sizes = p.sizes.split(/[ ,;]+/).map(Number).filter(v => v > 0);
+  p.lib = LIB.map((b, i) => ({ ...b, idx: i }));
+  p.brgSel = +p.brgSel;
+  if (p.useBrg) { const b = LIB[p.brgSel] || LIB[0]; Object.assign(p, { brgName: b.name, brgID: b.d, brgOD: b.D, brgB: b.B, brgC: b.C, brgC0: b.C0, brgNlim: b.nlim, brgType: b.type }); }
+  else Object.assign(p, { brgName: "envelope only", brgC: 0, brgC0: 0, brgNlim: 0 });
+  if (!p.useMotor && p.ratioSrc === "motor") p.ratioSrc = "manual";
+  p.gap = p.axcl; // output-pin lever: carrier face → first disc
+  return p;
+}
+function cadOpts(p) {
+  return { cadIn: p.cadIn, obSel: +p.obSel, obN: +p.obN, obGap: p.obGap, ibSel: +p.ibSel, sbSel: +p.sbSel, shaftExt: p.shaftExt, dflat: p.dflat, outSeat: p.outSeat,
+    boltN: Math.max(3, Math.round(p.boltN)), boltD: p.boltD, holeAllow: p.holeAllow, journalAllow: p.journalAllow, pocketAllow: p.pocketAllow,
+    tb: p.tb, boreClr: p.boreClr, tl: p.tl, tc: p.tc, tw: p.tw, axcl: p.axcl, dg: p.dg, facets: Math.max(180, Math.round(p.facets)) };
+}
+
+/* ---------- motor curve point editor ---------- */
+function getPts() { return String($("curve").value).split(/[,;]+/).map(t => t.split(":").map(Number)).filter(a => a.length === 2 && a.every(Number.isFinite)); }
+function setPts(pts) { $("curve").value = pts.map(([n, t]) => `${+n.toFixed(0)}:${+t.toFixed(3)}`).join(","); }
+function renderPts() {
+  const pts = getPts();
+  $("ptTbl").innerHTML = `<thead><tr><th>rpm</th><th>N·m</th><th></th></tr></thead><tbody>` + pts.map(([n, t], i) =>
+    `<tr><td><input data-pi="${i}" data-pk="0" value="${n}" style="width:70px"></td><td><input data-pi="${i}" data-pk="1" value="${t}" style="width:70px"></td><td><button data-pdel="${i}" aria-label="Delete point">×</button></td></tr>`).join("") + "</tbody>";
+}
+function drawMotorCurve(p) {
+  const cv = $("mC"); if (!cv || !p.useMotor || cv.offsetParent === null) return;
+  const pts = motorPts(p);
+  if (pts.length < 2) { placeholder(cv, "Motor curve", "Need at least 2 valid points."); $("mInfo").textContent = ""; return; }
+  const op = p.op || opPoint(p);
+  plot(cv, { title: "Motor shaft torque vs speed", xl: "rpm", yl: "N·m", series: [{ kind: "line", x: pts.map(q => q[0]), y: pts.map(q => q[1]), c: css("--accent") }],
+    mk: [{ x: p.nIn, y: op.Tm, c: css("--accent2"), label: "now" }] });
+  let info = "";
+  if (p.mType === "stepper") info = `Estimated corner speed ≈ ${motorCorner(p).toFixed(0)} rpm (torque flat below, falling ~1/speed above) [R9]. Mid-band resonance and microstepping effects are not modelled; real curves can dip lower.`;
+  else if (p.mType === "kv") { const Kt = 60 / (TAU * p.Kv); info = `Kt = ${Kt.toFixed(4)} N·m/A, max torque ${(Kt * p.kI).toFixed(3)} N·m, no-load ${(p.Kv * p.kV).toFixed(0)} rpm.`; }
+  else if (p.mType === "linear") info = `Straight line from stall torque to no-load speed.`;
+  else info = `Slider range 0–${motorNmax(pts).toFixed(0)} rpm (last point).`;
+  $("mInfo").textContent = info;
+}
+
+/* ---------- drawing ---------- */
+function fitCanvas(cv, h) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = h || cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + "px";
+  const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0); return [c, W, H];
+}
+function circle(c, x, y, r, stroke, lw, fill) { c.beginPath(); c.arc(x, y, Math.max(0, r), 0, TAU); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(); } }
+function drawMain(M, F, L1) {
+  const cv = $("main"), side = Math.min(cv.clientWidth, 640); const [c, W, H] = fitCanvas(cv, side);
+  c.fillStyle = "#050607"; c.fillRect(0, 0, W, H);
+  if (M.errs.length) { c.fillStyle = css("--bad"); c.font = "14px " + css("--mono"); c.fillText("Invalid design — see messages.", 16, 30); return; }
+  const p = M.p, R = p.housingOD / 2 + 2, s = (Math.min(W, H) - 20) / (2 * R), cx = W / 2, cy = H / 2;
+  const X = x => cx + x * s, Y = y => cy - y * s;
+  circle(c, cx, cy, p.housingOD / 2 * s, css("--accent2"), 1.5, "rgba(214,162,74,.05)");
+  circle(c, cx, cy, (p.Rp + p.rrp) * s, "#3a4046", 1);
+  for (let i = 0; i < p.Zp; i++) { const a = i / p.Zp * TAU; circle(c, X(p.Rp * Math.cos(a)), Y(p.Rp * Math.sin(a)), p.rrp * s, css("--pin"), 1, "rgba(88,180,255,.75)"); }
+  const cols = [css("--d1"), css("--d2")], fills = ["rgba(240,140,58,.14)", "rgba(164,135,245,.10)"];
+  F.discs.slice().reverse().forEach(d => {
+    const k = d.k; c.beginPath();
+    for (let i = 0; i < M.N; i += 3) { const [x, y] = profWorld(M, d, i); i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y)); }
+    c.closePath(); c.fillStyle = fills[k]; c.fill(); c.strokeStyle = cols[k]; c.lineWidth = 1.6; c.stroke();
+    for (const h of M.holes) { const [hx, hy] = holeWorld(h, d); circle(c, X(hx), Y(hy), h.r * s, cols[k], 1.1); }
+    if (!M.rv) circle(c, X(d.cx), Y(d.cy), p.brgID / 2 * s, css("--accent2"), 1, "rgba(214,162,74,.22)");
+  });
+  if (M.rv) {
+    for (let k = 0; k < p.Ncrank; k++) { const a = k / p.Ncrank * TAU + F.out, x = p.Ro * Math.cos(a), y = p.Ro * Math.sin(a);
+      F.discs.forEach(d => circle(c, X(x + d.cx), Y(y + d.cy), p.brgID / 2 * s, cols[d.k], 1, "rgba(214,162,74,.18)"));
+      circle(c, X(x), Y(y), Math.max(0.5, p.brgID / 2 - M.e - 0.3) * s, css("--out"), 1.2, "rgba(98,212,116,.6)"); }
+  } else {
+    for (let j = 0; j < p.Zo; j++) { const a = j / p.Zo * TAU + F.out; circle(c, X(p.Ro * Math.cos(a)), Y(p.Ro * Math.sin(a)), p.rop * s, css("--out"), 1, "rgba(98,212,116,.85)"); }
+  }
+  circle(c, cx, cy, p.shaftD / 2 * s, css("--accent"), 1.5, "rgba(47,182,160,.25)");
+  const Fm = L1.Fpk || 1; c.strokeStyle = css("--bad");
+  for (const q of L1.pins) if (q.loaded && q.F > 0) { c.globalAlpha = .35 + .65 * q.F / Fm; c.lineWidth = .5 + 2.5 * q.F / Fm; c.beginPath(); c.moveTo(X(q.cx), Y(q.cy)); c.lineTo(X(L1.Px), Y(L1.Py)); c.stroke(); }
+  c.globalAlpha = 1; circle(c, X(L1.Px), Y(L1.Py), 3, "#000", 1, "#fff");
+  c.fillStyle = css("--muted"); c.font = "11px " + css("--mono");
+  c.fillText(`crank ${(F.phi * R2D).toFixed(0)}°   output ${(F.out * R2D).toFixed(3)}°`, 10, H - 10);
+}
+function niceStep(range, n) { const raw = range / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag; }
+function placeholder(cv, title, text) { const [c, W, H] = fitCanvas(cv); c.clearRect(0, 0, W, H); c.fillStyle = css("--fg"); c.font = "11.5px " + css("--sans"); c.fillText(title, 48, 14); c.fillStyle = css("--muted"); c.fillText(text, 48, H / 2); }
+function plot(cv, o) {
+  const [c, W, H] = fitCanvas(cv); const fg = css("--fg"), mu = css("--muted"), ln = css("--line");
+  c.clearRect(0, 0, W, H);
+  const L = 48, Rm = 10, T = 34, B = 30, pw = W - L - Rm, ph = H - T - B;
+  c.font = "11.5px " + css("--sans"); c.fillStyle = fg; c.fillText(o.title, L, 14);
+  let xs = [], ys = [];
+  for (const s of o.series) { xs.push(...s.x.filter(Number.isFinite)); ys.push(...s.y.filter(Number.isFinite)); }
+  for (const h of o.h || []) if (Number.isFinite(h.y)) ys.push(h.y);
+  for (const m of o.mk || []) if (Number.isFinite(m.x) && Number.isFinite(m.y)) { xs.push(m.x); ys.push(m.y); }
+  if (!xs.length) xs = [0, 1];
+  const bars = o.series.some(s => s.kind === "bar");
+  let x0 = o.xr ? o.xr[0] : Math.min(...xs), x1 = o.xr ? o.xr[1] : Math.max(...xs);
+  if (bars) { x0 -= .5; x1 += .5; }
+  let y0 = o.yr ? o.yr[0] : Math.min(0, ...ys), y1 = o.yr ? o.yr[1] : Math.max(...ys, 1e-9) * 1.12;
+  if (x1 === x0) x1 = x0 + 1; if (!(y1 > y0)) y1 = y0 + 1;
+  const X = x => L + (x - x0) / (x1 - x0) * pw, Y = y => T + ph - (Math.min(Math.max(y, y0), y1) - y0) / (y1 - y0) * ph;
+  c.strokeStyle = ln; c.lineWidth = 1; c.fillStyle = mu; c.font = "10px " + css("--mono");
+  const ys_ = niceStep(y1 - y0, 4);
+  for (let v = Math.ceil(y0 / ys_) * ys_; v <= y1 + 1e-9; v += ys_) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(L + pw, Y(v)); c.stroke(); const t = +v.toPrecision(4); c.fillText(Math.abs(t) >= 1e4 ? t.toExponential(1) : String(t), 4, Y(v) + 3); }
+  const xs_ = o.xstep || niceStep(x1 - x0, 6);
+  for (let v = Math.ceil(x0 / xs_) * xs_; v <= x1 + 1e-9; v += xs_) { const t = +v.toPrecision(4); c.fillText(String(t), X(v) - 6, T + ph + 13); }
+  c.fillText(o.xl, L + pw - c.measureText(o.xl).width, H - 3); c.fillText(o.yl, 4, T - 8);
+  c.save(); c.beginPath(); c.rect(L, T - 1, pw, ph + 2); c.clip();
+  for (const s of o.series) {
+    c.strokeStyle = c.fillStyle = s.c;
+    if (s.kind === "bar") { const bw = Math.max(1, pw / (x1 - x0) * .7); s.x.forEach((x, i) => { const y = s.y[i]; if (!Number.isFinite(y)) return; c.fillRect(X(x) - bw / 2, Y(y), bw, Y(Math.max(y0, 0)) - Y(y)); }); }
+    else { c.lineWidth = 1.6; c.beginPath(); let st = false; s.x.forEach((x, i) => { const y = s.y[i]; if (!Number.isFinite(y)) { st = false; return; } st ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y)); st = true; }); c.stroke(); }
+  }
+  for (const h of o.h || []) if (Number.isFinite(h.y)) { c.strokeStyle = h.c; c.setLineDash([5, 4]); c.lineWidth = 1.2; c.beginPath(); c.moveTo(L, Y(h.y)); c.lineTo(L + pw, Y(h.y)); c.stroke(); c.setLineDash([]); }
+  for (const v of o.v || []) if (Number.isFinite(v.x)) { c.strokeStyle = v.c; c.setLineDash([3, 3]); c.lineWidth = 1; c.beginPath(); c.moveTo(X(v.x), T); c.lineTo(X(v.x), T + ph); c.stroke(); c.setLineDash([]); }
+  for (const m of o.mk || []) if (Number.isFinite(m.x) && Number.isFinite(m.y)) circle(c, X(m.x), Y(m.y), 4.5, "#000", 1, m.c);
+  c.restore();
+  let lx = L + pw; c.font = "10.5px " + css("--sans");
+  const leg = [...o.series.filter(s => s.label), ...(o.h || []).filter(h => h.label), ...(o.v || []).filter(h => h.label), ...(o.mk || []).filter(m => m.label)].reverse();
+  for (const s of leg) { const w = c.measureText(s.label).width; lx -= w + 18; c.fillStyle = s.c; c.fillRect(lx, T + 4, 9, 9); c.fillStyle = mu; c.fillText(s.label, lx + 12, T + 12); }
+}
+const PLOTS = ["mT", "mM", "mR", "pF", "pS", "pA", "pQ", "sS", "sB", "pK", "mD", "mP"];
+function ro(m, n) { const xs = [], ys = []; for (let i = 0; i <= n; i++) { const s = m.su * i / n; ys.push(s); xs.push(100 * (s / m.E + 0.002 * Math.pow(s / m.sy, m.ro))); } return { x: xs, y: ys }; }
+function drawMotorPlots(M, S) {
+  const p = M.p;
+  if (!p.useMotor) { ["mT", "mM", "mR"].forEach((id, k) => placeholder($(id), ["Output torque–speed", "Motor ↔ ratio match", "Safety factors vs motor speed"][k], "Turn on “Use motor torque–speed data” to see this.")); return; }
+  const op = p.op, r = op.r, pts = op.pts;
+  plot($("mT"), { title: `Output torque–speed at ratio ${r.total.toFixed(2)}:1`, xl: "output rpm", yl: "N·m",
+    series: [{ kind: "line", x: pts.map(q => q[0] / r.total), y: pts.map(q => q[1] * r.total * r.eta), c: css("--accent"), label: "available" }],
+    h: [{ y: p.Tout, c: css("--bad"), label: "load" }],
+    mk: [{ x: op.nOut, y: op.Tav, c: css("--accent2"), label: "operating point" }].concat(p.nOutReq > 0 ? [{ x: p.nOutReq, y: p.Tout, c: css("--bad"), label: "required" }] : []) });
+  const mm = MATCH, rows = mm.rows.filter(o => o.i <= Math.max(60, (mm.best ? mm.best.i : 30) * 3));
+  plot($("mM"), { title: p.nOutReq > 0 ? "Torque margin at required output speed vs ratio" : "Fastest output speed holding the load vs ratio", xl: "ratio", yl: p.nOutReq > 0 ? "margin ×" : "rpm",
+    series: [{ kind: "line", x: rows.map(o => o.i), y: rows.map(o => p.nOutReq > 0 ? o.margin : o.nOutMax), c: css("--accent"), label: "achievable Zp" }],
+    h: p.nOutReq > 0 ? [{ y: p.reserve, c: css("--bad"), label: "reserve" }] : [],
+    v: [{ x: r.total, c: css("--fg"), label: "current" }],
+    mk: mm.best ? [{ x: mm.best.i, y: p.nOutReq > 0 ? mm.best.margin : mm.best.nOutMax, c: css("--good"), label: "recommended" }] : [] });
+  const sc = SCAN || [], clip = v => Number.isFinite(v) ? Math.min(v, 6) : 6;
+  const ser = [{ kind: "line", x: sc.map(o => o.n), y: sc.map(o => clip(o.SFmin)), c: css("--fg"), label: "governing" }, { kind: "line", x: sc.map(o => o.n), y: sc.map(o => clip(o.SF.ring)), c: css("--d1"), label: "ring contact" }, { kind: "line", x: sc.map(o => o.n), y: sc.map(o => clip(o.SF.motor)), c: css("--accent"), label: "motor" }];
+  if (p.useBrg) ser.push({ kind: "line", x: sc.map(o => o.n), y: sc.map(o => clip(o.SF.life)), c: css("--accent2"), label: "bearing life" });
+  plot($("mR"), { title: "Safety factors vs motor speed (capped at 6)", xl: "motor rpm", yl: "SF", yr: [0, 6], series: ser, h: [{ y: 1, c: css("--bad") }], v: [{ x: p.nIn, c: css("--muted") }] });
+}
+function drawPlots(M, F, L1, S) {
+  if (M.errs.length) { PLOTS.forEach(id => { const [c, W, H] = fitCanvas($(id)); c.clearRect(0, 0, W, H); }); return; }
+  drawMotorPlots(M, S);
+  const p = M.p, idx = L1.pins.map(q => q.i + 1), sHall = S.sHall, mD = MAT[p.matD], mP = MAT[p.matP], xstep = Math.max(1, Math.round(p.Zp / 10));
+  plot($("pF"), { title: `Ring pin loads at ${p.phi}° (disc 1)`, xl: "pin #", yl: "F [N]", xstep, series: [{ kind: "bar", x: idx, y: L1.pins.map(q => q.F), c: css("--pin") }] });
+  plot($("pS"), { title: "Ring pin Hertz contact stress", xl: "pin #", yl: "σH [MPa]", xstep, series: [{ kind: "bar", x: idx, y: L1.pins.map(q => q.loaded ? q.sH : 0), c: css("--d1") }], h: [{ y: sHall, c: css("--bad"), label: "allowable" }] });
+  plot($("pA"), { title: "Pressure angle of loaded pins", xl: "pin #", yl: "α [°]", yr: [0, 90], xstep, series: [{ kind: "bar", x: idx, y: L1.pins.map(q => q.loaded && q.F > 0 ? q.alpha : NaN), c: css("--accent") }], h: [{ y: L1.aMax, c: css("--accent2"), label: "load-weighted mean" }] });
+  if (M.rv) plot($("pQ"), { title: "Crank bearing loads (disc 1)", xl: "crank #", yl: "F [N]", series: [{ kind: "bar", x: L1.brgEach.map((_, k) => k + 1), y: L1.brgEach, c: css("--out") }] });
+  else plot($("pQ"), { title: "Output pin loads (disc 1)", xl: "pin #", yl: "Q [N]", series: [{ kind: "bar", x: L1.outPins.map(o => o.j + 1), y: L1.outPins.map(o => o.Q), c: css("--out") }] });
+  plot($("sS"), { title: "Max contact stress over one input turn", xl: "crank [°]", yl: "MPa", xr: [0, 360], xstep: 60, series: [{ kind: "line", x: S.phis, y: S.sH, c: css("--d1"), label: "ring σH,max" }].concat(M.rv ? [] : [{ kind: "line", x: S.phis, y: S.Qp.map(q => hertz(q, 1 / p.rop - 1 / M.holeR, p.b, mD, mP)), c: css("--out"), label: "output σH" }]), h: [{ y: sHall, c: css("--bad"), label: "allowable" }] });
+  plot($("sB"), { title: "Bearing load over one input turn", xl: "crank [°]", yl: "N", xr: [0, 360], xstep: 60, series: [{ kind: "line", x: S.phis, y: S.brg, c: css("--accent2"), label: M.rv ? "max crank brg" : "eccentric brg" }, { kind: "line", x: S.phis, y: S.Fp, c: css("--pin"), label: "max pin F" }], h: [{ y: S.Peq, c: css("--muted"), label: "P_eq" }].concat(p.useBrg ? [{ y: p.brgC0 * 1000 / p.s0min, c: css("--bad"), label: "C0/s0" }] : []) });
+  const n = M.th.N, tx = [], ty = []; for (let i = 0; i < n; i += 2) { tx.push(i / n * 360); ty.push(M.kth[i] > 0 ? 1 / M.kth[i] : NaN); }
+  plot($("pK"), { title: "Undercut check: convex ρ of theoretical cycloid", xl: "profile parameter t [°]", yl: "ρ [mm]", xr: [0, 360 / p.Zp * 3], yr: [0, Math.max(M.rg * 4, M.rhoConv * 3)], series: [{ kind: "line", x: tx, y: ty, c: css("--accent"), label: "ρ convex" }], h: [{ y: M.rg, c: css("--bad"), label: "pin r + Δr (keep below ρ)" }] });
+  const cd = ro(mD, 60), cp = ro(mP, 60), epsAt = (m, s) => 100 * (s / m.E + 0.002 * Math.pow(s / m.sy, m.ro)), eqD = S.sHmax / 1.67;
+  plot($("mD"), { title: `Stress–strain: disc (${mD.n})`, xl: "strain [%]", yl: "σ [MPa]", series: [{ kind: "line", x: cd.x, y: cd.y, c: css("--d1") }], h: [{ y: mD.sy, c: css("--muted"), label: "σy" }], mk: [{ x: epsAt(mD, Math.min(eqD, mD.su)), y: Math.min(eqD, mD.su), c: eqD > mD.sy ? css("--bad") : css("--good"), label: "σH,max/1.67 [R4]" }] });
+  const mk = M.rv ? [] : [{ x: epsAt(mP, Math.min(S.sb, mP.su)), y: Math.min(S.sb, mP.su), c: S.sb > mP.sy ? css("--bad") : css("--good"), label: "output pin bending" }];
+  plot($("mP"), { title: `Stress–strain: pins (${mP.n})`, xl: "strain [%]", yl: "σ [MPa]", series: [{ kind: "line", x: cp.x, y: cp.y, c: css("--pin") }], h: [{ y: mP.sy, c: css("--muted"), label: "σy" }], mk });
+}
+
+/* ---------- status / report ---------- */
+const fx = (v, n = 2) => Number.isFinite(v) ? v.toFixed(n) : "∞";
+const sfc = v => v >= 1.5 ? "good" : v >= 1 ? "warn" : "bad";
+const BASIS = { slider: "motor max torque at this speed", peak: "motor peak torque", load: "required load torque" };
+function renderStatus(M, S) {
+  const st = $("status"), ms = $("msgs"), msg = (cls, t) => `<div class="msg ${cls}">${t}</div>`;
+  if (M.errs.length) { st.innerHTML = `<span class="k">Status</span><span class="bad">INVALID</span>`; ms.innerHTML = M.errs.map(e => msg("e", e)).join("") + M.warns.map(w => msg("w", w)).join(""); return; }
+  const p = M.p, op = p.op, r = op.r, kv = (k, v, c = "") => `<span class="k">${k}</span><span class="${c}">${v}</span>`, sep = `<span class="sep"></span>`;
+  const out = [
+    kv("Total ratio", `${fx(r.total, 3)} : 1 (${r.dir < 0 ? "reversing" : "same direction"})`),
+    kv("Pre-stage × cycloidal", p.mode === "rv" ? `1 + (${p.Z2}/${p.Z1})·${p.Zp}` : `${fx(r.pre, 3)} × ${M.Zd}`),
+    kv("Motor / output speed", `${fx(p.nIn, 0)} / ${fx(op.nOut, 2)} rpm`)];
+  if (p.useMotor) {
+    const iMin = op.Tm > 0 ? p.Tout / (op.Tm * r.eta) : Infinity;
+    out.push(kv("Motor torque at this speed", fx(op.Tm, 3) + " N·m"), kv("Available output torque", fx(op.Tav, 2) + " N·m"),
+      kv("Load torque / margin", `${fx(p.Tout, 2)} N·m / ×${fx(op.margin, 2)}`, op.margin >= p.reserve ? "good" : op.margin >= 1 ? "warn" : "bad"),
+      kv("Output power at this speed", fx(op.Pout, 2) + " W"),
+      kv("Min ratio to hold load here", Number.isFinite(iMin) ? fx(iMin, 2) + " : 1" : "motor stalled"),
+      MATCH.best ? kv("Recommended ratio (motor match)", `${fx(MATCH.best.i, 1)} : 1 (Zp ${MATCH.best.Zp})${p.nOutReq > 0 ? ` @ ${fx(MATCH.best.nMot, 0)} rpm motor` : ` → ${fx(MATCH.best.nOutMax, 1)} rpm max`}`) : "",
+      kv("Strength check uses", `${fx(p.Tdes, 2)} N·m (${BASIS[p.basis]})`));
+  } else out.push(kv("Required motor torque", fx(S.Tin, 3) + " N·m"));
+  out.push(sep,
+    kv("K1 = e·Zp/Rp", fx(M.K1, 3), M.K1 < .45 || M.K1 > .85 ? "warn" : ""),
+    kv("Disc tip / root Ø", `${fx(2 * M.tipR, 2)} / ${fx(2 * M.rootR, 2)} mm`),
+    kv("Min ligament", fx(M.minLig, 2) + " mm", M.minLig < p.lig ? "warn" : ""),
+    kv("Ring clearance (sweep)", `${fx(S.clrMin, 4)} … ${fx(S.clrMax, 4)} mm`, S.clrMin < 0 ? "bad" : ""),
+    M.rv ? "" : kv("Output hole clearance", fx(S.holeClrMin, 4) + " mm", S.holeClrMin < 0 ? "bad" : ""),
+    kv("Backlash (rigid est.)", fx(S.backlash, 1) + " arcmin"), sep,
+    kv("Ring pin max force", fx(S.Fmax, 1) + " N"), kv("Ring σH max / allow", `${fx(S.sHmax, 1)} / ${S.sHall} MPa`),
+    kv("Mean pressure angle (max)", fx(S.aMax, 1) + "°"),
+    M.rv ? "" : kv("Output pin Q max", fx(S.QpkMax, 1) + " N"),
+    M.rv ? "" : kv("Output σH / pin bending", `${fx(S.sHo, 1)} / ${fx(S.sb, 1)} MPa`), sep,
+    kv("Bearing", p.useBrg ? `${p.brgName} (${p.brgID}×${p.brgOD}×${p.brgB})` : "none selected (envelope)"),
+    kv("P_eq / P_max", `${fx(S.Peq, 1)} / ${fx(S.Pmax, 1)} N`), kv("Relative speed", fx(S.nRel, 0) + " rpm" + (p.useBrg && p.brgNlim ? ` (limit ${p.brgNlim})` : ""), S.speedOK ? "" : "bad"));
+  if (p.useBrg) out.push(kv("L10h / required", `${S.L10h > 1e6 ? ">1e6" : fx(S.L10h, 0)} / ${p.Lreq} h`, sfc(S.SF.life)), kv("Static safety s0", fx(S.s0, 2), sfc(S.SF.stat)));
+  else out.push(kv("Required C / C0", `${fx(S.Creq, 2)} / ${fx(S.C0req, 2)} kN`, "warn"));
+  out.push(sep, kv("SF ring contact", fx(S.SF.ring), sfc(S.SF.ring)),
+    M.rv ? "" : kv("SF output contact", fx(S.SF.outH), sfc(S.SF.outH)), M.rv ? "" : kv("SF output pin bending", fx(S.SF.bend), sfc(S.SF.bend)),
+    p.useBrg ? kv("SF bearing life (load basis)", fx(S.SF.life), sfc(S.SF.life)) : "", p.useBrg ? kv("SF bearing static", fx(S.SF.stat), sfc(S.SF.stat)) : "",
+    p.useMotor ? kv("SF motor torque", fx(S.SF.motor), sfc(S.SF.motor)) : "", kv("Governing SF", fx(S.SFmin), sfc(S.SFmin)));
+  st.innerHTML = out.join("");
+  const extra = [];
+  if (!S.speedOK) extra.push(msg("e", `Bearing relative speed ${fx(S.nRel, 0)} rpm exceeds its limit ${p.brgNlim} rpm.`));
+  if (p.useMotor && op.Tm <= 0) extra.push(msg("e", "Motor speed is beyond the end of the torque curve: no torque available."));
+  if (!p.useBrg) extra.push(msg("i", `No bearing selected: pick one with C ≥ ${fx(S.Creq, 2)} kN, C0 ≥ ${fx(S.C0req, 2)} kN, ID ${p.brgID}, OD ≤ ${p.brgOD}, width ≤ ${p.b} mm.`));
+  ms.innerHTML = extra.join("") + M.warns.map(w => msg("w", w)).join("") + msg("i", M.discNote);
+}
+function reportText(M, S) {
+  const p = M.p, L = [];
+  L.push("CYCLOIDAL DRIVE DESIGN REPORT  " + new Date().toISOString().slice(0, 10), "");
+  L.push(`Layout: ${MOD[p.mode]}${p.dual ? ", two discs 180°" : ", single disc"}`);
+  if (M.errs.length) { L.push("STATUS: INVALID"); M.errs.forEach(e => L.push(" - " + e)); return L.join("\n"); }
+  const op = p.op, r = op.r;
+  L.push(`Ratio ${r.total.toFixed(4)}:1 (${r.dir < 0 ? "reversing" : "same dir"}); motor ${p.nIn} rpm → output ${op.nOut.toFixed(2)} rpm; η ${r.eta.toFixed(3)}`);
+  if (p.useMotor) L.push(`Motor ${op.Tm.toFixed(3)} N·m at ${p.nIn} rpm → ${op.Tav.toFixed(2)} N·m available vs ${p.Tout} N·m load (×${fx(op.margin)}); ${op.Pout.toFixed(2)} W. Strength torque ${p.Tdes.toFixed(2)} N·m (${BASIS[p.basis]}).`);
+  else L.push(`Load torque ${p.Tout} N·m; required motor torque ≈ ${S.Tin.toFixed(3)} N·m`);
+  if (p.useMotor && MATCH.best) L.push(`Motor match: recommended ${MATCH.best.i.toFixed(2)}:1 (Zp ${MATCH.best.Zp})`);
+  L.push("", "GEOMETRY");
+  L.push(`Zp ${p.Zp}, Zd ${M.Zd}, Rp ${p.Rp}, ring pin Ø${2 * p.rrp}, e ${p.ecc}, K1 ${M.K1.toFixed(4)}, Δr ${p.dr}, disc t ${p.b}`);
+  L.push(`Disc tip Ø ${(2 * M.tipR).toFixed(3)}, root Ø ${(2 * M.rootR).toFixed(3)}, housing wall ${M.wall.toFixed(2)}, min convex ρ_th ${M.rhoConv.toFixed(3)} (> ${M.rg.toFixed(3)} required)`);
+  M.holes.forEach(h => L.push(`  hole: ${h.kind}  @(${h.x.toFixed(3)}, ${h.y.toFixed(3)})  Ø${(2 * h.r).toFixed(3)}`));
+  L.push(`Min ligament ${M.minLig.toFixed(3)} mm. ${M.discNote}`, "");
+  L.push("VERIFICATION (" + S.phis.length + " crank samples × " + (p.dual ? 2 : 1) + " discs)");
+  L.push(`Ring pin clearance ${S.clrMin.toFixed(5)} … ${S.clrMax.toFixed(5)} mm (target Δr = ${p.dr})`);
+  if (!M.rv) L.push(`Output hole radial clearance min ${S.holeClrMin.toFixed(5)} mm (target ${p.tol})`);
+  L.push(`Backlash estimate ${S.backlash.toFixed(1)} arcmin (rigid, no deflection/manufacturing error)`, "");
+  L.push("LOADS & STRESS (per disc torque = T × " + (p.dual ? p.share : 1) + ")");
+  L.push(`Ring pin F_max ${S.Fmax.toFixed(1)} N, σH_max ${S.sHmax.toFixed(1)} MPa vs allow ${S.sHall} → SF ${fx(S.SF.ring)}`);
+  if (!M.rv) L.push(`Output pin Q_max ${S.QpkMax.toFixed(1)} N, σH ${S.sHo.toFixed(1)} MPa → SF ${fx(S.SF.outH)}; bending ${S.sb.toFixed(1)} MPa vs σy ${MAT[p.matP].sy} → SF ${fx(S.SF.bend)}`);
+  L.push(`Load-weighted pressure angle (worst over turn) ${S.aMax.toFixed(1)}°`, "");
+  L.push("BEARING");
+  if (p.useBrg) L.push(`${p.brgName} ${p.brgID}×${p.brgOD}×${p.brgB}, C ${p.brgC} kN, C0 ${p.brgC0} kN: P_eq ${S.Peq.toFixed(1)} N, P_max ${S.Pmax.toFixed(1)} N, n_rel ${S.nRel.toFixed(0)} rpm → L10h ${fx(S.L10h, 0)} h (req ${p.Lreq}), s0 ${fx(S.s0)} (min ${p.s0min})`);
+  else L.push(`None selected. Required: C ≥ ${S.Creq.toFixed(2)} kN, C0 ≥ ${S.C0req.toFixed(2)} kN (P_eq ${S.Peq.toFixed(1)} N @ ${S.nRel.toFixed(0)} rpm, ${p.Lreq} h)`);
+  L.push("");
+  if (M.warns.length) { L.push("WARNINGS"); M.warns.forEach(w => L.push(" - " + w)); L.push(""); }
+  L.push("Materials: disc " + MAT[p.matD].n + ", pins " + MAT[p.matP].n + " (typical values — verify).");
+  L.push("Refs: [R1] Litvin&Fuentes 2004; [R2] Shin&Kwon MMT 2006; [R3] Blagojević et al. JMD 2011; [R4] Johnson, Contact Mechanics 1985; [R5] Uicker/Pennock/Shigley; [R6] ISO 281 / ISO 76; [R7] Ramberg–Osgood NACA TN-902; [R8] Nabtesco RV kinematics.");
+  return L.join("\n");
+}
+
+/* ---------- controller ---------- */
+let M = null, S = null, MATCH = { rows: [], best: null }, SCAN = null, scanKey = "", playing = false, raf = 0;
+function frameOnly() {
+  if (!M) return;
+  const phi = +$("phi").value; M.p.phi = phi; $("phiV").textContent = phi;
+  if (M.errs.length) { drawMain(M); drawPlots(M); return; }
+  const F = frame(M, phi), L1 = loads(M, F.discs[0], F.out, MAT[M.p.matD], MAT[M.p.matP]);
+  drawMain(M, F, L1); drawPlots(M, F, L1, S);
+}
+function syncSlider(p) {
+  const sl = $("nIn"), mx = p.useMotor ? Math.max(100, Math.ceil(motorNmax(motorPts(p)) / 10) * 10) : 3000;
+  if (+sl.max !== mx) { sl.max = mx; if (+sl.value > mx) sl.value = mx; }
+  $("nInV").textContent = sl.value;
+}
+function recompute(fast) {
+  applyVisibility();
+  if ($("mType").value === "table") { const pts = getPts().sort((a, b) => a[0] - b[0]); setPts(pts); }
+  let p = readP(); syncSlider(p); p = readP();
+  p = prepare(p);
+  M = build(p);
+  MATCH = p.useMotor ? motorMatch(p) : { rows: [], best: null };
+  S = M.errs.length ? null : sweep(M, fast ? 90 : Math.max(36, Math.min(1440, Math.round(p.sweepN))));
+  if (!M.errs.length && p.useMotor) {
+    const { nIn, phi, op, Tdes, ...rest } = p, key = JSON.stringify(rest);
+    if (key !== scanKey || !SCAN) { if (!fast || !SCAN) { SCAN = rpmScan(M, 24); scanKey = key; } }
+  }
+  renderStatus(M, S); $("report").textContent = reportText(M, S) + equationsText(M, S); frameOnly(); drawMotorCurve(p);
+  renderEquations(M, S); if (!fast) renderAdvice();
+  renderCAD(p);
+}
+/* ---------- drive CAD UI ---------- */
+let CAD = null;
+const PCOL = { base: "#7d8a94", housing: "#d6a24a", cap: "#c28a3a", carrier: "#62d474", washer: "#3fae66", spo: "#9aa4ab", spi: "#9aa4ab", disc1: "#f08c3a", disc2v: "#a487f5", disc2: "#a487f5", cam: "#2fb6a0" };
+function partColor(p, name) {
+  if (PCOL[p.id]) return PCOL[p.id];
+  if (/RING_PIN/.test(name)) return "#58b4ff"; if (/OUTPUT_PIN/.test(name)) return "#b5f0c0"; if (/SHAFT/.test(name)) return "#cfd6da"; return "#e3e1db";
+}
+function sectionIntervals(feats, yc) { // material x-intervals of a stacked prism cut by the plane y = yc
+  const zs = [...new Set(feats.flatMap(f => [f.z0, f.z1]))].sort((a, b) => a - b), out = [];
+  for (let k = 0; k + 1 < zs.length; k++) {
+    const z0 = zs[k], z1 = zs[k + 1], xs = [];
+    for (const f of feats) if (f.z0 <= z0 + 1e-9 && f.z1 >= z1 - 1e-9) {
+      const P = sampleLoop(f.loop, 64);
+      for (let i = 0; i < P.length; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length];
+        if ((y1 > yc) !== (y2 > yc)) xs.push(x1 + (yc - y1) * (x2 - x1) / (y2 - y1)); }
+    }
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < xs.length; i += 2) out.push([xs[i], xs[i + 1], z0, z1]);
+  }
+  return out;
+}
+function drawSection(D) {
+  const cv = $("secView"), W0 = cv.clientWidth || 400, p = M.p, z = D.z;
+  const R = p.housingOD / 2 + 4, H = z.ztop + (p.cadIn === "shaft" ? +p.shaftExt : 0) + 8, Ht = Math.min(520, Math.max(220, W0 * H / (2 * R)));
+  const [c, Wd, Hd] = fitCanvas(cv, Ht); c.fillStyle = "#050607"; c.fillRect(0, 0, Wd, Hd);
+  const s = Math.min((Wd - 16) / (2 * R), (Hd - 16) / H), X = x => Wd / 2 + x * s, zb = p.cadIn === "shaft" ? -p.shaftExt : 0, Y = zz => Hd - 8 - (zz - zb) * s;
+  const draw = (p_, kindAlpha) => {
+    for (const inst of (p_.inst || [{ dx: 0, dy: 0, dz: 0, name: p_.name }])) {
+      const col = partColor(p_, inst.name || p_.name);
+      for (const [x0, x1, z0, z1] of sectionIntervals(p_.feats, -inst.dy)) {
+        c.globalAlpha = kindAlpha; c.fillStyle = col; c.fillRect(X(x0 + inst.dx), Y(z1 + inst.dz), (x1 - x0) * s, (z1 - z0) * s);
+        c.globalAlpha = 1; c.strokeStyle = "#000"; c.lineWidth = .6; c.strokeRect(X(x0 + inst.dx), Y(z1 + inst.dz), (x1 - x0) * s, (z1 - z0) * s);
+      }
+    }
+  };
+  D.parts.filter(q => q.kind !== "buy").forEach(q => draw(q, .85));
+  D.parts.filter(q => q.kind === "buy").forEach(q => draw(q, .55));
+  c.strokeStyle = "rgba(255,255,255,.25)"; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(0), 4); c.lineTo(X(0), Hd - 4); c.stroke(); c.setLineDash([]);
+  c.fillStyle = css("--muted"); c.font = "10.5px " + css("--mono");
+  c.fillText(`section through y = 0 · total height ${D.info.height.toFixed(1)} mm · Ø${p.housingOD}`, 8, 14);
+}
+function renderCAD(p) {
+  const msgs = $("cadMsgs"), m = (cls, t) => `<div class="msg ${cls}">${t}</div>`;
+  CAD = M && !M.errs.length ? driveParts(M, cadOpts(p)) : { errs: ["Fix the gearbox design errors first."], warns: [], parts: [], buy: [] };
+  const ok = !CAD.errs.length; $("zipAll").disabled = $("asmStep").disabled = !ok;
+  msgs.innerHTML = CAD.errs.map(e => m("e", e)).join("") + CAD.warns.map(w => m("w", w)).join("");
+  if (!ok) { $("partsTbl").innerHTML = $("buyTbl").innerHTML = ""; const [c, W, H] = fitCanvas($("secView"), 160); c.fillStyle = "#050607"; c.fillRect(0, 0, W, H); $("secInfo").textContent = ""; return; }
+  drawSection(CAD);
+  const make = CAD.parts.filter(q => q.kind === "make"), sz = q => { const zs = q.feats.flatMap(f => [f.z0, f.z1]), od = 2 * Math.max(...q.feats.filter(f => !f.hole).map(f => Math.max(...sampleLoop(f.loop, 16).map(([x, y]) => Math.hypot(x, y))))); return `Ø${od.toFixed(1)} × ${(Math.max(...zs) - Math.min(...zs)).toFixed(1)}`; };
+  $("partsTbl").innerHTML = `<thead><tr><th></th><th>Part</th><th>What it does</th><th>Size, mm</th><th>Qty</th><th></th></tr></thead><tbody>` + make.map((q, i) =>
+    `<tr><td><i class="dot" style="background:${partColor(q, q.name)}"></i></td><td><b>${q.label}</b><div class="hint">${q.how}</div></td><td>${q.desc}</td><td class="n">${sz(q)}</td><td class="n">${q.qty}</td><td><button data-step="${i}">STEP</button></td></tr>`).join("") + "</tbody>";
+  $("partsTbl").querySelectorAll("button[data-step]").forEach(b => b.onclick = () => { const q = make[+b.dataset.step]; download(q.file + ".step", "application/step", partSTEP(q)); });
+  $("buyTbl").innerHTML = `<thead><tr><th>Qty</th><th>Item</th><th>Note</th></tr></thead><tbody>` + CAD.buy.map(r => `<tr><td class="n">${r[0]}</td><td>${r[1]}</td><td class="hint">${r[2]}</td></tr>`).join("") + "</tbody>";
+  $("secInfo").innerHTML = `Stack from the bottom: base plate → ring pins + ${p.dual ? "2 discs" : "disc"} on the cam → pin lip → ${+p.obN}× output bearing → top cap / clamp washer. Bearings and pins are drawn lighter.`;
+}
+function bomText(D) { return "CYCLOIDAL DRIVE — BUY / CUT LIST\n\n" + D.buy.map(r => `${r[0].padEnd(5)} ${r[1]}${r[2] ? "  (" + r[2] + ")" : ""}`).join("\n") +
+  "\n\nMADE PARTS\n" + D.parts.filter(q => q.kind === "make").map(q => `${String(q.qty).padEnd(3)}× ${q.label} — ${q.file}.step — ${q.how}\n      ${q.desc}`).join("\n") + "\n"; }
+function downloadDriveZip(Mx, D, name) {
+  if (!D || D.errs.length) { note("e", "Drive CAD has errors: see the Drive CAD panel."); return; }
+  const btns = [...document.querySelectorAll("#zipAll, button[data-z]")]; btns.forEach(b => b.disabled = true);
+  setTimeout(() => {
+    try {
+      const files = D.parts.filter(q => q.kind === "make").map(q => ({ name: q.file + ".step", text: partSTEP(q) }));
+      files.push({ name: "00_assembly_all_parts.step", text: assemblySTEP(D, Mx.p.withBought) }, { name: "BOM.txt", text: bomText(D) }, { name: "design_report.txt", text: reportText(Mx, sweep(Mx, 180)) });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([makeZip(files)], { type: "application/zip" })); a.download = (name || "cycloidal_drive") + "_STEP.zip";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (err) { note("e", "STEP export failed: " + err.message); }
+    btns.forEach(b => b.disabled = false); if (CAD && CAD.errs.length) $("zipAll").disabled = true;
+  }, 30);
+}
+
+/* ---------- optimizer UI ---------- */
+function optOptions(base) {
+  const mats = [...document.querySelectorAll("input[data-om]")].filter(x => x.checked).map(x => x.dataset.om);
+  const bs = String($("optBs").value).split(/[ ,;]+/).map(Number).filter(v => v > 0);
+  let a = +$("odMin").value, b = +$("odMax").value, st = Math.max(0.5, +$("odStep").value || 5);
+  if (!(a > 0)) a = base.housingOD; if (!(b > 0)) b = a; if (a > b) [a, b] = [b, a];
+  const ods = []; for (let v = a; v <= b + 1e-9 && ods.length < 12; v += st) ods.push(+v.toFixed(2)); if (ods[ods.length - 1] < b) ods.push(b);
+  return { mats, bs, ods, objective: $("objective").value, target: +$("targetSF").value || 1.5 };
+}
+let OPTRUN = 0;
+async function runOpt() {
+  const base = readP(), o = optOptions(base), run = ++OPTRUN;
+  $("optInfo").textContent = "Searching…"; $("optTbl").innerHTML = "";
+  const t0 = performance.now();
+  const O = await optimize(base, o, (f, OD, Zp) => { if (run === OPTRUN) $("optInfo").textContent = `Searching… ${Math.round(f * 100)} % (housing Ø${OD}, Zp ${Zp})`; });
+  if (run !== OPTRUN) return;
+  const dt = ((performance.now() - t0) / 1000).toFixed(1);
+  const src = base.ratioSrc === "motor" ? (base.nOutReq > 0 ? `ratio from motor match (×${base.reserve} reserve at ${base.nOutReq} rpm)` : "ratio near the motor's max-power point") : `ratio ${base.target} ±${base.ratioTol}%`;
+  $("optInfo").textContent = `${OBJ[o.objective].n} · target SF ${o.target} · ${src} · Zp ${O.zps.join(", ")} · housing Ø ${o.ods.join(", ")} · materials ${o.mats.map(k => MAT[k].n.split(" (")[0]).join(", ") || MAT[base.matD].n} · b ${o.bs.join(", ") || base.b} mm · ${O.valid} geometries · ${dt} s`;
+  if (!O.top.length) { $("optTbl").innerHTML = `<div class="msg e">No geometry fits inside the housing / bearing / ligament limits. Widen the housing OD range, tick more (or smaller) bearings, allow an integral eccentric, or add smaller pin sizes.</div>`; return; }
+  const rv = base.mode === "rv", nOk = O.top.filter(t => t.SFmin >= o.target).length;
+  const head = `<tr><th>#</th><th>meets</th><th>SF min</th><th>governed by</th><th>gearbox SF</th><th>ratio</th><th>housing Ø</th><th>disc</th><th>b</th><th>Zp</th><th>Rp</th><th>pin Ø</th><th>e</th><th>K1</th><th>${rv ? "cranks" : "Zo × pin Ø"}</th><th>Ro</th><th>bearing</th><th>motor rpm</th><th>backlash′</th><th>discs g</th><th>CAD fits</th><th></th></tr>`;
+  const rows = O.top.map((t, i) => { const c = t.cand, s = t.S, g = Object.entries(s.SF).reduce((a, b) => b[1] < a[1] ? b : a)[0];
+    return `<tr><td>${i + 1}</td><td class="${t.SFmin >= o.target ? "good" : "bad"}">${t.SFmin >= o.target ? "✓" : "✗"}</td><td class="${sfc(t.SFmin)}">${fx(t.SFmin)}</td><td style="text-align:left">${SFNAME[g] || g}</td><td class="${sfc(t.mech)}">${fx(t.mech)}</td><td>${fx(t.ratio, 2)}</td><td>${c.housingOD}</td><td style="text-align:left">${MAT[c.matD].n.split(" (")[0]}</td><td>${c.b}</td><td>${c.Zp}</td><td>${c.Rp}</td><td>${2 * c.rrp}</td><td>${c.ecc}</td><td>${fx(t.M.K1, 2)}</td><td>${rv ? c.Ncrank : c.Zo + " × " + 2 * c.rop}</td><td>${c.Ro}</td><td style="text-align:left">${base.useBrg ? c.brgName : "—"}</td><td>${fx(c.nIn, 0)}</td><td>${fx(t.backlash, 1)}</td><td>${fx(t.mass, 0)}</td>${(() => { const D = t.D || driveParts(t.M, cadOpts(t.M.p)); t.D = D; return D.errs.length ? `<td class="bad" title="${D.errs[0].replace(/"/g, "'")}">✗</td>` : `<td class="good">✓</td>`; })()}<td style="white-space:nowrap"><button data-i="${i}">Apply</button> <button data-z="${i}" ${t.D && t.D.errs.length ? "disabled" : ""} title="Download every part as STEP (zip)">STEP ⬇</button></td></tr>`; }).join("");
+  const verdict = nOk ? `<div class="msg i">${nOk} of ${O.top.length} shortlisted designs meet SF ≥ ${o.target}. Row 1 is the best by “${OBJ[o.objective].n}”.</div>`
+    : (() => { const t = O.top[0], g = Object.entries(t.S.SF).reduce((a, b) => b[1] < a[1] ? b : a)[0], c = t.cand, need = [];
+        if (g === "ring" || g === "outH") need.push(`disc thickness ≈ ${fx(c.b * (o.target / t.SFmin) ** 2, 1)} mm (SF ∝ √b)`, `or torque ≤ ${fx(t.S.op.Tdes * (t.SFmin / o.target) ** 2, 2)} N·m (SF ∝ 1/√T)`, "or a larger housing OD range", "or harder disc materials (42CrMo4 / 52100)");
+        if (g === "bend") need.push(`thicker output pins or a shorter pin overhang (σ_b ∝ a/d³)`);
+        if (g === "life" || g === "stat") need.push("a bearing with higher C / C₀ (tick more in the library), or larger bearing envelope");
+        if (g === "motor") need.push("a higher ratio or stronger motor (see the motor-match plot)");
+        return `<div class="msg e">Nothing in the allowed search space reaches SF ${o.target}. Best: ${fx(t.SFmin)}, limited by ${SFNAME[g]}. To reach the target with row 1 you need ${need.join("; ")}.</div>`; })();
+  $("optTbl").innerHTML = verdict + `<div class="tblwrap"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div><div class="hint" style="margin-top:6px">Every row is re-verified with the full solver (72-sample sweep). backlash′ = rigid-body estimate in arcmin. Disc mass uses typical densities.</div>`;
+  $("optTbl").querySelectorAll("button[data-z]").forEach(b => b.onclick = () => { const t = O.top[+b.dataset.z]; downloadDriveZip(t.M, t.D, `cyclo_Zp${t.cand.Zp}_e${t.cand.ecc}`); });
+  $("optTbl").querySelectorAll("button[data-i]").forEach(b => b.onclick = () => {
+    const c = O.top[+b.dataset.i].cand;
+    for (const k of ["Zp", "Rp", "rrp", "ecc", "Ro", "Zo", "rop", "Ncrank", "housingOD", "b", "matD"]) if ($(k) && c[k] !== undefined) $(k).value = c[k];
+    if (base.useBrg && c.brgSel >= 0) $("brgSel").value = String(c.brgSel);
+    if (base.useMotor && base.ratioSrc === "motor" && base.nOutReq > 0) $("nIn").value = Math.round(c.nIn);
+    recompute();
+  });
+}
+
+/* ---------- advisor UI ---------- */
+let ADVRUN = 0;
+function renderAdvice() {
+  const host = $("advice"), run = ++ADVRUN;
+  if (!M || M.errs.length || !S) { host.innerHTML = `<div class="hint">Fix the design errors first.</div>`; return; }
+  host.innerHTML = `<div class="hint">Checking alternatives…</div>`;
+  setTimeout(() => {
+    if (run !== ADVRUN) return;
+    const target = +$("targetSF").value || 1.5, A = advise(M, S, target), p = M.p;
+    const ok = S.SFmin >= target;
+    const lines = [`<div class="kv" style="margin-bottom:8px">
+      <span class="k">Governing check</span><span class="${sfc(A.gov[1])}">${SFNAME[A.gov[0]] || A.gov[0]} — SF ${fx(A.gov[1])}</span>
+      <span class="k">Target SF</span><span>${target} (${ok ? '<span class="good">met</span>' : '<span class="bad">not met</span>'})</span>
+      <span class="k">Torque this design can carry at SF ${target}</span><span>${fx(A.cap, 2)} N·m at the output (now asked: ${fx(p.Tdes, 2)} N·m)</span>
+    </div>`];
+    if (A.gov[0] === "motor") lines.push(`<div class="msg w">The motor is the limit, not the gearbox. ${MATCH.best ? `Motor match suggests ${fx(MATCH.best.i, 1)}:1 (Zp ${MATCH.best.Zp}); run the optimizer with “Ratio from: motor data”.` : "Use a stronger motor or a higher ratio."}</div>`);
+    if (A.gov[0] === "speed") lines.push(`<div class="msg e">Bearing runs above its speed limit: choose a bearing with a higher limit or lower the motor speed.</div>`);
+    if (A.note) lines.push(`<div class="msg w">${A.note}</div>`);
+    if (!ok) lines.push(`<div class="msg i">Torque scaling at fixed geometry: contact SF ∝ 1/√T, so this design reaches SF ${target} at ${fx(A.cap, 2)} N·m. To carry ${fx(p.Tdes, 2)} N·m you need ≈ ${fx(p.Tdes / A.cap, 1)}× more capacity: combine a stiffer/stronger disc material with a larger pin circle (housing OD) or thicker discs — run the optimizer with those allowed.</div>`);
+    lines.push(`<div class="tblwrap"><table><thead><tr><th style="text-align:left">Single change (everything else as now)</th><th>SF min</th><th>then governed by</th><th></th></tr></thead><tbody>` +
+      A.rows.map((r, i) => `<tr><td style="text-align:left">${r.label}${r.why ? `<div class="hint">${r.why}</div>` : ""}</td><td class="${sfc(r.SFmin)}">${fx(r.SFmin)}${r.SFmin >= target ? " ✓" : ""}</td><td style="text-align:left">${SFNAME[r.gov] || r.gov}</td><td><button data-adv="${i}">Apply</button></td></tr>`).join("") +
+      `</tbody></table></div><div class="hint" style="margin-top:6px">Geometry-only changes (Zp, Rp, e, pins, holes, bearing) are what the optimizer searches. To also let it trade material, disc thickness and housing size, tick those in the optimizer settings.</div>`);
+    host.innerHTML = lines.join("");
+    host.querySelectorAll("button[data-adv]").forEach(b => b.onclick = () => {
+      const o = A.rows[+b.dataset.adv].over;
+      for (const [k, v] of Object.entries(o)) { const el = $(k); if (!el) continue; if (el.type === "checkbox") el.checked = !!v; else el.value = String(v); }
+      recompute();
+    });
+  }, 60);
+}
+
+/* ---------- equations with current values ---------- */
+function equations(M, S) {
+  const p = M.p, op = p.op, r = op.r, mD = MAT[p.matD], mP = MAT[p.matP], pexp = p.brgType === "roller" ? 10 / 3 : 3, n = (v, d = 3) => fx(v, d);
+  const sec = [];
+  sec.push(["Kinematics [R2, R5, R8]", [
+    ["Cycloidal stage (ring fixed): i_c = Zd = Zp − 1", `${M.Zd}`],
+    ["Disc centre: O_d = e·(cos φ, sin φ); disc rotation θ_d = −φ / Zd", `e = ${p.ecc} mm`],
+    p.mode === "planet" ? ["Planetary pre-stage: i_p = 1 + Nr/Ns; total i = i_p·(Zp − 1)", `${n(r.pre)} × ${M.Zd} = ${n(r.total)}`] : null,
+    p.mode === "rv" ? ["RV: i = 1 + (Z2/Z1)·Zp (case fixed, carrier output)", `1 + (${p.Z2}/${p.Z1})·${p.Zp} = ${n(r.total)}`] : null,
+    ["Output speed: n_out = n_in / i", `${p.nIn} / ${n(r.total)} = ${n(op.nOut)} rpm`],
+    ["Efficiency: η = η_pre·η_cyc", n(r.eta)]].filter(Boolean)]);
+  if (p.useMotor) sec.push(["Motor [R9]", [
+    p.mType === "stepper" ? ["Stepper corner speed: n_c = V/(2·L·I) · (step°/360) · 60", `${p.sV}/(2·${p.sL}e-3·${p.sI})·(${p.sStep}/360)·60 = ${n(motorCorner(p), 0)} rpm`] : null,
+    p.mType === "stepper" ? ["T_m(n) = k·T_hold for n ≤ n_c;  T_m(n) = k·T_hold·n_c/n above", `k = ${p.sPull}, T_hold = ${p.sHold} N·m`] : null,
+    p.mType === "kv" ? ["K_t = 60/(2π·Kv);  T_m(n) = min(K_t·I_max, K_t·(V − n/Kv)/R)", `K_t = ${n(60 / (TAU * p.Kv), 4)} N·m/A`] : null,
+    ["Motor torque at operating speed T_m(n_in)", `${n(op.Tm)} N·m`],
+    ["Available output torque: T_av = T_m·i·η", `${n(op.Tm)}·${n(r.total, 2)}·${n(r.eta)} = ${n(op.Tav, 2)} N·m`],
+    ["Torque margin = T_av / T_load", `${n(op.Tav, 2)} / ${p.Tout} = ${n(op.margin, 2)}`],
+    ["Output power: P = T_av·2π·n_out/60", `${n(op.Pout, 2)} W`],
+    ["Strength-check torque T", `${n(p.Tdes, 2)} N·m (${BASIS[p.basis]})`]].filter(Boolean)]);
+  sec.push(["Profile [R1, R2]", [
+    ["x(t) = Rp·cos t − e·cos(Zp·t) − r_g·cos(t + ψ)", ""],
+    ["y(t) = Rp·sin t − e·sin(Zp·t) − r_g·sin(t + ψ)", ""],
+    ["ψ(t) = atan2( sin((1 − Zp)·t), Rp/(e·Zp) − cos((1 − Zp)·t) )", ""],
+    ["Generating radius: r_g = r_pin + Δr", `${p.rrp} + ${p.dr} = ${n(M.rg)} mm`],
+    ["Shape factor: K1 = e·Zp / Rp  (must be < 1; usual 0.45–0.85)", `${p.ecc}·${p.Zp}/${p.Rp} = ${n(M.K1)}`],
+    ["Undercut-free if min convex ρ of the theoretical curve (r_g = 0) > r_g", `${n(M.rhoConv)} > ${n(M.rg)} mm`],
+    ["Tip / root radius: R = Rp − r_g ± e", `${n(M.tipR)} / ${n(M.rootR)} mm`],
+    ["Pin pitch: p = 2π·Rp / Zp", `${n(M.pitch)} mm`],
+    M.rv ? ["Crank bore = bearing OD (no clearance)", `Ø${p.brgOD} mm`] : ["Output hole radius: r_h = r_op + e + c", `${p.rop} + ${p.ecc} + ${p.tol} = ${n(M.holeR)} mm`],
+    ["Disc 2: crank φ + π, profile indexed −π/Zd relative to its holes", `${n(-180 / M.Zd)}°`]]]);
+  sec.push(["Loads [R3]", [
+    ["Torque per disc: T_d = T·share (dual) or T (single)", `${n(discTorque(p) / 1000, 3)} N·m`],
+    ["Pitch point P = e·Zp·(cos φ, sin φ); every contact normal passes through P", `|OP| = ${n(p.ecc * p.Zp)} mm`],
+    ["Line of action u_i = (P − C_i)/|P − C_i|; lever l_i = |(C_i − O_d) × u_i|", ""],
+    ["Ring pin force: F_i = F_max·l_i/(e·Zd),  F_max = T_d·e·Zd / Σ l_i²  (loaded half only)", `F_max over turn = ${n(S.Fmax, 1)} N`],
+    M.rv ? ["Crank bearing k: f_k = −ΣF_i·u_i / N_c + T_d/(N_c·Ro)·t̂_k", `max ${n(S.Pmax, 1)} N`] :
+      ["Output pin force (always along −ê): Q_j = Q_max·l_j/Ro, l_j = Ro·sin(θ_j − φ) > 0, Q_max = T_d·Ro/Σ l_j²", `Q_max = ${n(S.QpkMax, 1)} N`],
+    M.rv ? null : ["Eccentric bearing load: F_b = |ΣF_i·u_i − (ΣQ_j)·ê|", `max ${n(S.Pmax, 1)} N`],
+    ["Pressure angle: cos α_i = l_i / |C_i − O_d|  (load-weighted mean)", `${n(S.aMax, 1)}°`]].filter(Boolean)]);
+  sec.push(["Stress [R4, R7]", [
+    ["Hertz line contact: σ_H = √( F·ΣK / (π·b·(η₁ + η₂)) ),  η = (1 − ν²)/E", `η_disc+η_pin = ${(etaPair(mD, mP)).toExponential(3)} 1/MPa`],
+    ["Ring contact curvature: ΣK = 1/r_pin + κ_disc (κ < 0 where the disc is concave)", `σ_H,max = ${n(S.sHmax, 1)} MPa`],
+    M.rv ? null : ["Output contact: ΣK = 1/r_op − 1/r_h", `σ_H = ${n(S.sHo, 1)} MPa`],
+    M.rv ? null : ["Pin bending (cantilever): σ_b = 32·Q·a/(π·d³), a = gap + (dual ? 1.5 : 0.5)·b", `a = ${n(p.gap + (p.dual ? 1.5 : 0.5) * p.b, 2)} mm → ${n(S.sb, 1)} MPa`],
+    ["Allowable contact: σ_allow = min(σ_H,allow disc, σ_H,allow pin)", `${S.sHall} MPa`],
+    ["Subsurface yield onset (Tresca): p₀ = 1.67·σ_y", `disc: ${n(1.67 * mD.sy, 0)} MPa`],
+    ["Ramberg–Osgood: ε = σ/E + 0.002·(σ/σ_y)^n", `disc n = ${mD.ro}, pin n = ${mP.ro}`]].filter(Boolean)]);
+  sec.push(["Bearing [R6]", [
+    ["Relative speed: n_rel = n_ecc·Zp/Zd (central) or Zp·n_out (RV)", `${n(S.nRel, 0)} rpm`],
+    [`Equivalent load: P_eq = (Σ F_b^p / N)^(1/p), p = ${pexp === 3 ? "3 (ball)" : "10/3 (roller)"}`, `${n(S.Peq, 1)} N`],
+    p.useBrg ? ["Life: L10h = 10⁶/(60·n_rel)·(C/P_eq)^p", `${S.L10h > 1e6 ? ">1e6" : n(S.L10h, 0)} h`] : ["Required: C_req = P_eq·(L_req·60·n_rel/10⁶)^(1/p)", `${n(S.Creq, 2)} kN`],
+    p.useBrg ? ["Static safety: s₀ = C₀ / P_max", n(S.s0, 2)] : ["Required: C₀,req = s₀,min·P_max", `${n(S.C0req, 2)} kN`]]]);
+  sec.push(["Safety factors & scaling", [
+    ["SF_contact = σ_allow/σ_H;  SF_bend = σ_y/σ_b;  SF_life = (L10/L_req)^(1/p);  SF_static = s₀/s₀,min;  SF_motor = T_av/T_load", `governing = ${n(S.SFmin, 2)}`],
+    ["How SF moves: SF_contact ∝ √(b/T)·√(1/(η₁+η₂)); SF_bend ∝ 1/(T·a); SF_life ∝ 1/T", "used by optimizer & advisor"],
+    ["Backlash (rigid): Δθ ≈ 2·(Δr/(e·Zd) + c/Ro)", `${n(S.backlash, 1)} arcmin`],
+    ["Disc mass ≈ ρ·b·(π·R_tip² − Σπ·r_hole²)", `${n((p.dual ? 2 : 1) * discMass(MAT[p.matD].rho, p.b, M.tipR, M.holes), 1)} g (${p.dual ? "2 discs" : "1 disc"})`]]]);
+  return sec;
+}
+function renderEquations(M, S) {
+  const host = $("eqs");
+  if (!M || M.errs.length || !S) { host.innerHTML = `<div class="hint">Shown once the design is valid.</div>`; return; }
+  host.innerHTML = equations(M, S).map(([t, rows]) => `<h4>${t}</h4><div class="tblwrap"><table class="eq"><tbody>${rows.map(([f, v]) => `<tr><td>${f}</td><td>${v}</td></tr>`).join("")}</tbody></table></div>`).join("");
+}
+function equationsText(M, S) {
+  if (!M || M.errs.length || !S) return "";
+  return "\nEQUATIONS (current values)\n" + equations(M, S).map(([t, rows]) => `-- ${t}\n` + rows.map(([f, v]) => `  ${f}${v ? "   →  " + v : ""}`).join("\n")).join("\n");
+}
+
+function download(name, mime, text) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function note(cls, t) { $("msgs").insertAdjacentHTML("afterbegin", `<div class="msg ${cls}">${t}</div>`); }
+function guard(fn) { return () => { if (!M || M.errs.length) { note("e", "Export blocked: the design is invalid. Fix the errors first."); return; } fn(); }; }
+function init() {
+  buildForm(); renderLib(); renderPts();
+  $("brgSel").value = String(libIdx("6803")); $("obSel").value = String(libIdx("6812")); $("ibSel").value = String(libIdx("608")); $("sbSel").value = String(libIdx("608"));
+  applyVisibility();
+  $("plots").innerHTML = PLOTS.map(id => `<canvas id="${id}"></canvas>`).join("");
+  let t = 0;
+  const form = $("form");
+  form.addEventListener("input", e => {
+    const id = e.target.id;
+    if (e.target.dataset.pi !== undefined) { const pts = getPts(); pts[+e.target.dataset.pi][+e.target.dataset.pk] = +e.target.value; setPts(pts); clearTimeout(t); t = setTimeout(() => recompute(), 250); return; }
+    if (e.target.dataset.k) { // library edit
+      const b = LIB[+e.target.dataset.i], k = e.target.dataset.k;
+      b[k] = k === "use" ? e.target.checked : (k === "name" || k === "type") ? e.target.value : +e.target.value;
+      saveLib(); if (k !== "use") for (const id of ["brgSel", "obSel", "ibSel", "sbSel"]) { const opt = $(id).options[+e.target.dataset.i]; if (opt) opt.textContent = `${b.name}  ${b.d}×${b.D}×${b.B}  C ${b.C} kN`; }
+      clearTimeout(t); t = setTimeout(() => recompute(), 200); return;
+    }
+    if (id === "phi") { frameOnly(); return; }
+    if (id === "nIn") { $("nInV").textContent = e.target.value; recompute(true); return; }
+    if (id === "targetSF") { renderAdvice(); return; }
+    if (e.target.dataset.om !== undefined || ["target", "ratioTol", "sizes", "autoOpt", "objective", "optBs", "odMin", "odMax", "odStep"].includes(id)) { applyVisibility(); return; }
+    if (id === "housingOD" && $("odMin").value === $("odMax").value) { $("odMin").value = $("odMax").value = e.target.value; }
+    clearTimeout(t); t = setTimeout(() => recompute(), 120);
+  });
+  form.addEventListener("change", e => {
+    const id = e.target.id;
+    if (id === "advTgl") { document.body.classList.toggle("basic", !e.target.checked); try { localStorage.setItem("cyclo.adv", e.target.checked ? "1" : "0"); } catch (x) {} return; }
+    if (id === "fit") { const F = { fdm: [0.15, 0.05, 0.1], mach: [0, 0, 0] }[e.target.value]; if (F) { $("holeAllow").value = F[0]; $("journalAllow").value = F[1]; $("pocketAllow").value = F[2]; } }
+    if (["holeAllow", "journalAllow", "pocketAllow"].includes(id)) $("fit").value = "custom";
+    if (id === "cadIn" && e.target.value !== "shaft") { $("shaftD").value = e.target.value === "n23" ? 8 : 5; if (+$("dflat").value === 0) $("dflat").value = 0.5; }
+    if (id === "preset" && PRESETS[e.target.value].length > 1) { const [, T, I, L] = PRESETS[e.target.value]; $("sHold").value = T; $("sI").value = I; $("sL").value = L; }
+    if (["sHold", "sI", "sL"].includes(id)) $("preset").value = "custom";
+    if (id === "nIn") { recompute(); if ($("autoOpt").checked) runOpt(); return; }
+    if (id === "ratioSrc") { applyVisibility(); return; }
+    if (e.target.dataset.om !== undefined || id === "objective") return;
+    if (e.target.tagName === "SELECT" || e.target.type === "checkbox") recompute();
+  });
+  form.addEventListener("click", e => {
+    const qb = e.target.closest("button.q");
+    if (qb) { e.preventDefault(); const box = $("qa-" + qb.dataset.q), open = box.hidden; box.hidden = !open; qb.setAttribute("aria-expanded", String(open)); return; }
+    if (e.target.id === "ptAdd") { const pts = getPts(), last = pts[pts.length - 1] || [0, 0.5]; pts.push([last[0] + 300, +(last[1] * 0.8).toFixed(3)]); setPts(pts); renderPts(); recompute(); return; }
+    if (e.target.dataset.pdel !== undefined) { const pts = getPts(); if (pts.length > 2) { pts.splice(+e.target.dataset.pdel, 1); setPts(pts); renderPts(); recompute(); } return; }
+    if (e.target.id === "toPts") { const q = readP(), src = motorPts(q), n = motorNmax(src), pts = [];
+      for (const f of [0, 0.125, 0.25, 0.4, 0.6, 0.8, 1]) { const x = n * f; pts.push([x, motorT(src, x)]); } setPts(pts); $("mType").value = "table"; renderPts(); recompute(); return; }
+    if (e.target.id === "libAdd") { LIB.push({ use: true, name: "new", d: 8, D: 16, B: 5, C: 1.5, C0: 0.6, nlim: 30000, type: "ball" }); saveLib(); renderLib(); recompute(); }
+    else if (e.target.id === "libReset") { LIB = BRG_DEFAULT.map(b => ({ ...b })); saveLib(); renderLib(); recompute(); }
+    else if (e.target.dataset.del !== undefined) { if (LIB.length > 1) { LIB.splice(+e.target.dataset.del, 1); saveLib(); renderLib(); recompute(); } }
+  });
+  $("play").onclick = () => {
+    playing = !playing; $("play").textContent = playing ? "Pause" : "Animate"; $("play").classList.toggle("primary", playing);
+    const step = () => { if (!playing) return; $("phi").value = (+$("phi").value + 1) % 360; frameOnly(); raf = requestAnimationFrame(step); };
+    if (playing) raf = requestAnimationFrame(step); else cancelAnimationFrame(raf);
+  };
+  $("runOpt").onclick = runOpt;
+  $("zipAll").onclick = () => downloadDriveZip(M, CAD, `cyclo_Zp${M.p.Zp}_e${M.p.ecc}`);
+  $("asmStep").onclick = () => { if (CAD && !CAD.errs.length) download("cycloidal_drive_assembly.step", "application/step", assemblySTEP(CAD, M.p.withBought)); };
+  $("xDXF").onclick = guard(() => download("cyclo_discs.dxf", "application/dxf", exportDXF(M)));
+  $("xSVG").onclick = guard(() => download("cyclo_discs.svg", "image/svg+xml", exportSVG(M)));
+  $("xSTEP1").onclick = guard(() => download("cyclo_disc1.step", "application/step", exportSTEP(M, 0)));
+  $("xSTEP2").onclick = guard(() => M.p.dual ? download("cyclo_disc2.step", "application/step", exportSTEP(M, 1)) : note("w", "Single-disc design: only disc 1 exists."));
+  $("xCSV").onclick = guard(() => download("cyclo_geometry.csv", "text/csv", exportCSV(M)));
+  $("xPNG").onclick = () => { const a = document.createElement("a"); a.href = $("main").toDataURL("image/png"); a.download = "cyclo_section.png"; a.click(); };
+  $("xTXT").onclick = guard(() => download("cyclo_report.txt", "text/plain", reportText(M, S)));
+  $("copy").onclick = () => { const txt = $("report").textContent; (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => $("copy").textContent = "Copied", () => { const r = document.createRange(); r.selectNodeContents($("report")); getSelection().removeAllRanges(); getSelection().addRange(r); }); };
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(frameOnly, 100); });
+  recompute();
+}
+init();
+
+</script>
+</body>
+</html>
